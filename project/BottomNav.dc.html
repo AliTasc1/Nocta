@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:100%;height:100%;padding:10px 14px 26px;display:flex;justify-content:space-around;align-items:flex-start;background:rgba(12,8,11,.86);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,230,240,.08);box-sizing:border-box;font-family:Manrope,sans-serif">
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="5">
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:60px;position:relative;color:{{ it.color }}">
+<span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;font-variation-settings:'FILL' {{ it.fill }}, 'wght' 300">{{ it.icon }}</span>
+<span style="font-size:10.5px;font-weight:600;letter-spacing:.02em">{{ it.label }}</span>
+<sc-if value="{{ it.badge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:-4px;right:12px;min-width:17px;height:17px;border-radius:9px;background:#E7688A;color:#1A0710;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #0C080B">{{ it.badge }}</span></sc-if>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:375,&quot;height&quot;:84},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Home&quot;,&quot;Games&quot;,&quot;Chat&quot;,&quot;Memories&quot;,&quot;Profile&quot;],&quot;default&quot;:&quot;Home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;unread&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? 'Home';
+    const base = [['Home','home'],['Games','playing_cards'],['Chat','chat_bubble'],['Memories','auto_stories'],['Profile','person']];
+    return { items: base.map(([label, icon]) => ({ label, icon, color: label === a ? '#F4B9C8' : '#8E7C85', fill: label === a ? 1 : 0, badge: label === 'Chat' ? (this.props.unread ?? 3) : 0 })) };
+  }
+}
+</script>
+</body>
+</html>

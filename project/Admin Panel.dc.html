@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0..1,0" rel="stylesheet">
+<style>body{margin:0;background:#0C080B;color:#F6EEF1;font-family:Manrope,sans-serif;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}a{color:#F4B9C8;text-decoration:none}a:hover{color:#FFFFFF}</style>
+</helmet>
+<div style="min-height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr);background:#0C080B">
+<aside style="position:sticky;top:0;height:100vh;overflow:auto;background:#0F0A0E;border-right:1px solid rgba(255,230,240,.06);padding:22px 12px;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;align-items:baseline;gap:8px;padding:0 10px 20px"><span style="font-family:'Instrument Serif',serif;font-size:28px">noc<i style="color:#F4B9C8">ta</i></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:#B3A2AA">ADMIN</span></div>
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="13">
+<button onClick="{{ n.go }}" style="display:flex;align-items:center;gap:11px;height:40px;padding:0 10px;border:0;border-radius:12px;background:{{ n.bg }};color:{{ n.c }};font:{{ n.w }} 13.5px Manrope,sans-serif;text-align:left;cursor:pointer"><span style="font-family:'Material Symbols Rounded';font-size:20px">{{ n.i }}</span>{{ n.t }}<sc-if value="{{ n.b }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;padding:1px 7px;border-radius:999px;background:#F07A7A;color:#2A0A0A;font-size:10.5px;font-weight:800">{{ n.b }}</span></sc-if></button>
+</sc-for>
+<a href="Design System.dc.html" style="margin-top:auto;padding:12px 10px;font-size:12px;color:#B3A2AA">← Design system</a>
+</aside>
+
+<main style="min-width:0;padding:24px clamp(16px,3vw,40px) 64px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px">
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;color:#B3A2AA">{{ crumb }}</span><h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:40px;line-height:1">{{ title }}</h1></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div style="height:40px;width:260px;max-width:40vw;border-radius:12px;background:#171016;border:1px solid rgba(255,230,240,.08);display:flex;align-items:center;gap:8px;padding:0 12px;color:#8E7C85;font-size:13px"><span style="font-family:'Material Symbols Rounded';font-size:18px">search</span>Kullanıcı, çift, içerik ara</div>
+<span style="padding:9px 12px;border-radius:12px;background:#171016;border:1px solid rgba(255,230,240,.08);font-size:12.5px;font-weight:600">Son 30 gün</span>
+<span style="width:36px;height:36px;border-radius:50%;background:#2A1530;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">MK</span>
+</div>
+</div>
+
+<sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+<sc-for list="{{ kpis }}" as="k" hint-placeholder-count="7">
+<div style="padding:16px;border-radius:18px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:8px">
+<span style="font-size:12px;color:#B3A2AA;font-weight:600">{{ k.t }}</span>
+<span style="font-family:'Instrument Serif',serif;font-size:34px;line-height:1">{{ k.v }}</span>
+<span style="font-size:12px;font-weight:700;color:{{ k.c }}">{{ k.d }}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px">
+<div style="padding:20px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:700">Daily games · 30 gün</span><span style="font-size:12px;color:#B3A2AA">ort. 18 420 / gün</span></div>
+<div style="height:200px;display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid rgba(255,230,240,.08)">
+<sc-for list="{{ bars }}" as="b" hint-placeholder-count="30"><div style="flex:1;height:{{ b.h }};border-radius:4px 4px 0 0;background:{{ b.c }}"></div></sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8E7C85"><span>26 Ağu</span><span>10 Eyl</span><span>25 Eyl</span></div>
+</div>
+<div style="padding:20px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:14px">
+<span style="font-size:15px;font-weight:700">Oyun dağılımı</span>
+<sc-for list="{{ mix }}" as="m" hint-placeholder-count="6">
+<div style="display:grid;grid-template-columns:150px minmax(0,1fr) 48px;gap:12px;align-items:center;font-size:13px"><span>{{ m.t }}</span><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.06)"><div style="width:{{ m.w }};height:100%;border-radius:4px;background:#E7688A"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#B3A2AA;text-align:right">{{ m.w }}</span></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAnalytics }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+<sc-for list="{{ akpis }}" as="k" hint-placeholder-count="9">
+<div style="padding:16px;border-radius:18px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#B3A2AA;font-weight:600">{{ k.t }}</span><span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1">{{ k.v }}</span><span style="font-size:12px;font-weight:700;color:{{ k.c }}">{{ k.d }}</span></div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px">
+<div style="padding:20px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">DAU / WAU / MAU</span><div style="display:flex;gap:12px;font-size:11.5px;color:#B3A2AA"><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#E7688A"></span>DAU</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#A88BF0"></span>WAU</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#4A3A44"></span>MAU</span></div></div>
+<div style="height:220px;display:flex;align-items:flex-end;gap:10px;border-bottom:1px solid rgba(255,230,240,.08)">
+<sc-for list="{{ users3 }}" as="u" hint-placeholder-count="12"><div style="flex:1;height:100%;display:flex;align-items:flex-end;gap:2px"><div style="flex:1;height:{{ u.m }};background:#4A3A44;border-radius:3px 3px 0 0"></div><div style="flex:1;height:{{ u.w }};background:#A88BF0;border-radius:3px 3px 0 0"></div><div style="flex:1;height:{{ u.d }};background:#E7688A;border-radius:3px 3px 0 0"></div></div></sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#8E7C85"><span>Eki 25</span><span>Nis 26</span><span>Eyl 26</span></div>
+</div>
+<div style="padding:20px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:14px">
+<span style="font-size:15px;font-weight:700">Couple retention · cohort</span>
+<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:70px repeat(6,minmax(44px,1fr));gap:4px;font-family:'JetBrains Mono',monospace;font-size:11px;min-width:380px">
+<span></span><span style="color:#B3A2AA;text-align:center">W0</span><span style="color:#B3A2AA;text-align:center">W1</span><span style="color:#B3A2AA;text-align:center">W2</span><span style="color:#B3A2AA;text-align:center">W4</span><span style="color:#B3A2AA;text-align:center">W8</span><span style="color:#B3A2AA;text-align:center">W12</span>
+<sc-for list="{{ cohort }}" as="r" hint-placeholder-count="5"><span style="color:#B3A2AA;display:flex;align-items:center">{{ r.n }}</span><sc-for list="{{ r.v }}" as="c"><span style="height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:{{ c.bg }};color:{{ c.fg }}">{{ c.t }}</span></sc-for></sc-for>
+</div></div>
+</div>
+<div style="padding:20px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:14px">
+<span style="font-size:15px;font-weight:700">Funnel · started → completed → premium</span>
+<sc-for list="{{ funnel }}" as="f" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>{{ f.t }}</span><span style="font-family:'JetBrains Mono',monospace;color:#B3A2AA">{{ f.v }}</span></div><div style="height:26px;border-radius:8px;background:rgba(255,255,255,.04)"><div style="width:{{ f.w }};height:100%;border-radius:8px;background:linear-gradient(90deg,#6B1E38,#E7688A)"></div></div></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isForm }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start">
+<div style="padding:22px;border-radius:20px;background:#171016;border:1px solid rgba(231,104,138,.3);display:flex;flex-direction:column;gap:14px">
+<span style="font-size:15px;font-weight:700">{{ formTitle }}</span>
+<sc-for list="{{ formFields }}" as="f" hint-placeholder-count="4">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#B3A2AA">{{ f.l }}</span><div style="min-height:44px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,230,240,.12);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:14px;line-height:1.4">{{ f.v }}<span style="font-family:'Material Symbols Rounded';color:#8E7C85;font-size:18px">{{ f.i }}</span></div></label>
+</sc-for>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span style="font-size:13.5px;font-weight:600">Active</span><div style="width:44px;height:26px;border-radius:13px;background:#E7688A;padding:3px;display:flex;justify-content:flex-end"><div style="width:20px;height:20px;border-radius:50%;background:#FFF"></div></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button style="height:44px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);color:#F6EEF1;font:600 13.5px Manrope,sans-serif">Taslak</button><button style="height:44px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 13.5px Manrope,sans-serif">Yayınla</button></div>
+</div>
+<div style="padding:22px;border-radius:20px;background:#0F0A0E;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:12px">
+<span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#B3A2AA">APP PREVIEW</span>
+<div style="padding:22px;border-radius:24px;background:radial-gradient(120% 90% at 20% 0%, #6B1E38 0%, #2A1530 70%);display:flex;flex-direction:column;gap:14px"><div style="display:flex;justify-content:space-between"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;color:#F4B9C8">{{ previewKind }}</span><span style="padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.3);font-size:10.5px;font-weight:800">FLIRTY</span></div><span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1.15">{{ previewText }}</span></div>
+<span style="font-size:12px;color:#B3A2AA;line-height:1.5">İçerik kuralları: rıza odaklı, açık cinsel betimleme yok, her kart atlanabilir.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isStory }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;align-items:start">
+<div style="padding:18px;border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:12px">
+<div style="height:150px;border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,230,240,.05) 0 1px,transparent 1px 12px),#2A1530;display:flex;align-items:flex-end;padding:12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#B3A2AA">Cover · 1080×1920 · drop image</div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#B3A2AA">Title</span><div style="height:44px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,230,240,.12);display:flex;align-items:center;padding:0 14px;font-size:14px">Midnight Escape</div></label>
+<div style="display:flex;gap:8px;font-size:12px;flex-wrap:wrap"><span style="padding:4px 10px;border-radius:999px;background:rgba(231,104,138,.16);color:#F4B9C8;font-weight:800">FLIRTY</span><span style="padding:4px 10px;border-radius:999px;background:rgba(127,209,174,.14);color:#7FD1AE;font-weight:800">ACTIVE</span><span style="padding:4px 10px;border-radius:999px;background:rgba(168,139,240,.16);color:#C9B8F7;font-weight:800">PREMIUM</span></div>
+<span style="font-size:12.5px;color:#B3A2AA">6 sahne · 10 seçim · 3 son · ort. 24 dk · 8 312 tamamlama</span>
+</div>
+<div style="grid-column:span 2;min-width:0;padding:20px;border-radius:20px;background:#0F0A0E;border:1px solid rgba(255,230,240,.07);display:flex;flex-direction:column;gap:14px;overflow-x:auto">
+<span style="font-size:15px;font-weight:700">Scenes & choices</span>
+<div style="display:flex;gap:14px;align-items:flex-start;min-width:720px">
+<sc-for list="{{ storyCols }}" as="col" hint-placeholder-count="4">
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#B3A2AA">{{ col.h }}</span>
+<sc-for list="{{ col.n }}" as="s"><div style="padding:12px;border-radius:14px;background:{{ s.bg }};border:1px solid {{ s.bd }};display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:700">{{ s.t }}</span><span style="font-size:11.5px;color:#B3A2AA;line-height:1.4">{{ s.d }}</span></div></sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasTable }}" hint-placeholder-val="{{ false }}">
+<div style="border-radius:20px;background:#171016;border:1px solid rgba(255,230,240,.07);overflow:hidden">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,230,240,.07)">
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ filters }}" as="f"><span style="padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:700;background:{{ f.bg }};color:{{ f.c }}">{{ f.t }}</span></sc-for></div>
+<sc-if value="{{ addLabel }}" hint-placeholder-val="{{ false }}"><button style="height:38px;padding:0 16px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 13px Manrope,sans-serif;display:flex;align-items:center;gap:6px"><span style="font-family:'Material Symbols Rounded';font-size:18px">add</span>{{ addLabel }}</button></sc-if>
+</div>
+<div style="overflow-x:auto">
+<table style="width:100%;border-collapse:collapse;min-width:760px;font-size:13.5px">
+<thead><tr><sc-for list="{{ cols }}" as="c"><th style="text-align:left;padding:12px 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;font-weight:500;color:#B3A2AA;text-transform:uppercase;border-bottom:1px solid rgba(255,230,240,.07)">{{ c }}</th></sc-for><th style="border-bottom:1px solid rgba(255,230,240,.07)"></th></tr></thead>
+<tbody>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+<tr style-hover="background:rgba(255,255,255,.02)">
+<sc-for list="{{ r }}" as="c"><td style="padding:13px 18px;border-bottom:1px solid rgba(255,230,240,.05)"><span style="padding:{{ c.p }};border-radius:999px;background:{{ c.bg }};color:{{ c.c }};font-weight:{{ c.w }};font-size:{{ c.fs }};white-space:nowrap">{{ c.v }}</span></td></sc-for>
+<td style="padding:13px 18px;border-bottom:1px solid rgba(255,230,240,.05);text-align:right"><span style="font-family:'Material Symbols Rounded';color:#8E7C85">more_horiz</span></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;font-size:12.5px;color:#B3A2AA"><span>{{ foot }}</span><div style="display:flex;gap:6px"><span style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Rounded'">chevron_left</span><span style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Rounded'">chevron_right</span></div></div>
+</div>
+</sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;initialTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dashboard&quot;,&quot;Users&quot;,&quot;Couples&quot;,&quot;Games&quot;,&quot;Questions&quot;,&quot;Challenges&quot;,&quot;Stories&quot;,&quot;Reports&quot;,&quot;Subscriptions&quot;,&quot;Payments&quot;,&quot;Analytics&quot;,&quot;Content Management&quot;,&quot;Settings&quot;],&quot;default&quot;:&quot;Dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { tab: this.props.initialTab ?? 'Dashboard' };
+  renderVals() {
+    const tab = this.state.tab;
+    const NAV = [['space_dashboard','Dashboard'],['group','Users'],['favorite','Couples'],['playing_cards','Games'],['help','Questions'],['bolt','Challenges'],['movie','Stories'],['flag','Reports',7],['workspace_premium','Subscriptions'],['payments','Payments'],['monitoring','Analytics'],['edit_note','Content Management'],['settings','Settings']];
+    const B = (v, tone) => { const T = { ok:['rgba(127,209,174,.14)','#7FD1AE'], warn:['rgba(242,194,123,.14)','#F2C27B'], bad:['rgba(240,122,122,.14)','#F07A7A'], pro:['rgba(168,139,240,.16)','#C9B8F7'], rose:['rgba(231,104,138,.16)','#F4B9C8'], mute:['rgba(255,255,255,.06)','#B3A2AA'] }[tone]; return { v, bg:T[0], c:T[1], p:'4px 10px', w:800, fs:'11px' }; };
+    const P = (v, strong) => ({ v, bg:'transparent', c: strong ? '#F6EEF1' : '#B3A2AA', p:'0', w: strong ? 700 : 500, fs:'13.5px' });
+    const M = v => ({ v, bg:'transparent', c:'#B3A2AA', p:'0', w:500, fs:'12.5px' });
+    const st = { a:()=>B('ACTIVE','ok'), p:()=>B('PASSIVE','mute') };
+    const tables = {
+      Users: { cols:['Kullanıcı','E-posta','Partner','Plan','Kayıt','Durum'], add:'', foot:'96 214 kullanıcı', rows:[
+        [P('Ela Yıldız',1),M('ela.yildiz@gmail.com'),P('Deniz A.'),B('PREMIUM','pro'),M('14 Tem 2026'),B('ACTIVE','ok')],
+        [P('Kaan Demir',1),M('kaandmr@outlook.com'),P('Selin K.'),B('PREMIUM','pro'),M('3 Mar 2026'),B('ACTIVE','ok')],
+        [P('Mert Aksoy',1),M('mert.aksoy@icloud.com'),P('—'),B('FREE','mute'),M('24 Eyl 2026'),B('PENDING','warn')],
+        [P('Zeynep Er',1),M('zeyneper@gmail.com'),P('Can E.'),B('FREE','mute'),M('11 Haz 2026'),B('ACTIVE','ok')],
+        [P('Arda Kılıç',1),M('arda.k@proton.me'),P('—'),B('FREE','mute'),M('2 Eyl 2026'),B('SUSPENDED','bad')],
+        [P('İrem Çelik',1),M('iremcelik@gmail.com'),P('Burak T.'),B('PREMIUM','pro'),M('19 Oca 2026'),B('ACTIVE','ok')]]},
+      Couples: { cols:['Çift','Birlikte','Level','Oyun','Son aktivite','Durum'], add:'', foot:'41 870 aktif çift', rows:[
+        [P('Ela & Deniz',1),M('2 ay'),B('LV3 FLIRTY','rose'),P('27'),M('3 dk önce'),B('ONLINE','ok')],
+        [P('Selin & Kaan',1),M('3 yıl'),B('LV5 UNSTOPPABLE','rose'),P('412'),M('1 sa önce'),B('ACTIVE','ok')],
+        [P('Zeynep & Can',1),M('8 ay'),B('LV2 CURIOUS','rose'),P('41'),M('Dün'),B('ACTIVE','ok')],
+        [P('İrem & Burak',1),M('1 yıl'),B('LV4 CLOSER','rose'),P('188'),M('4 gün önce'),B('IDLE','warn')],
+        [P('Ece & Onur',1),M('5 ay'),B('LV1','rose'),P('3'),M('21 gün önce'),B('DISCONNECTED','bad')]]},
+      Games: { cols:['Oyun','Kategori','Seviye','Oynanma / gün','Tamamlama','Durum'], add:'Yeni oyun', foot:'8 oyun · 2 premium', rows:[
+        [P('Truth or Dare',1),M('Party'),M('Soft–Bold'),P('4 210'),P('81%'),st.a()],[P('Would You Rather',1),M('Choice'),M('Tümü'),P('3 880'),P('92%'),st.a()],
+        [P('How Well Do You Know Me',1),M('Quiz'),M('Soft'),P('2 640'),P('77%'),st.a()],[P('Couple Challenges',1),M('Task'),M('Tümü'),P('3 120'),P('64%'),st.a()],
+        [P('Secret Questions',1),M('Reveal'),M('Flirty+'),P('2 970'),P('88%'),st.a()],[P('This or That',1),M('Quick'),M('Tümü'),P('4 480'),P('95%'),st.a()],
+        [P('Couple Story',1),M('Story'),M('Flirty+'),P('1 090'),P('58%'),B('PREMIUM','pro')],[P('Private Chat Game',1),M('Chat'),M('Tümü'),P('2 030'),P('—'),B('BETA','warn')]]},
+      Questions: { cols:['Soru','Kategori','Difficulty','Mood','Kullanım','Durum'], add:'Yeni soru', foot:'1 248 soru', rows:[
+        [P('Partnerinin ideal date’i hangisi?',1),M('HWDYKM'),B('SOFT','mute'),M('Romantik'),P('18 204'),st.a()],
+        [P('Henüz söylemediğin romantik bir düşüncen var mı?',1),M('Secret'),B('FLIRTY','rose'),M('Gizemli'),P('9 881'),st.a()],
+        [P('Seni en çok heyecanlandıran kişilik özelliğim?',1),M('Truth'),B('FLIRTY','rose'),M('Flörtöz'),P('12 430'),st.a()],
+        [P('İlk buluşmamızda aklından ne geçti?',1),M('Secret'),B('SOFT','mute'),M('Romantik'),P('7 202'),st.p()]]},
+      Challenges: { cols:['Görev','Kategori','Level','Timer','Tamamlama','Durum'], add:'Yeni görev', foot:'386 challenge', rows:[
+        [P('60 sn gözlerini kaçırmadan bak',1),M('Flirty'),B('LV2','rose'),M('60s'),P('71%'),st.a()],
+        [P('3 farklı iltifat gönder',1),M('Romantic'),B('LV1','rose'),M('—'),P('89%'),st.a()],
+        [P('Romantik bir sesli mesaj gönder',1),M('Flirty'),B('LV2','rose'),M('120s'),P('63%'),st.a()],
+        [P('Bir şarkıyı sadece mırıldanarak anlat',1),M('Funny'),B('LV1','rose'),M('30s'),P('84%'),st.p()]]},
+      Reports: { cols:['Rapor','Tür','Bildiren','Öncelik','Tarih','Durum'], add:'', foot:'7 açık rapor · ort. yanıt 2 sa 14 dk', rows:[
+        [P('#R-2291 · Taciz içerikli mesaj',1),M('Chat'),M('anonim'),B('HIGH','bad'),M('25 Eyl 22:41'),B('OPEN','warn')],
+        [P('#R-2290 · Rıza dışı fotoğraf paylaşımı',1),M('Photo'),M('anonim'),B('HIGH','bad'),M('25 Eyl 19:02'),B('IN REVIEW','pro')],
+        [P('#R-2287 · Uygunsuz soru önerisi',1),M('Content'),M('kullanıcı'),B('MED','warn'),M('24 Eyl'),B('OPEN','warn')],
+        [P('#R-2281 · Sahte hesap şüphesi',1),M('Account'),M('sistem'),B('LOW','mute'),M('23 Eyl'),B('RESOLVED','ok')]]},
+      Subscriptions: { cols:['Çift','Plan','Başlangıç','Yenileme','MRR','Durum'], add:'', foot:'12 480 aktif abonelik', rows:[
+        [P('Ela & Deniz',1),B('YEARLY','pro'),M('25 Eyl 2026'),M('25 Eyl 2027'),P('₺74,9'),B('TRIAL','warn')],
+        [P('Selin & Kaan',1),B('YEARLY','pro'),M('3 Mar 2026'),M('3 Mar 2027'),P('₺74,9'),B('ACTIVE','ok')],
+        [P('İrem & Burak',1),B('MONTHLY','pro'),M('19 Oca 2026'),M('19 Eki 2026'),P('₺139'),B('ACTIVE','ok')],
+        [P('Ece & Onur',1),B('MONTHLY','pro'),M('5 Nis 2026'),M('—'),P('₺0'),B('CANCELED','bad')]]},
+      Payments: { cols:['İşlem','Çift','Tutar','Yöntem','Tarih','Durum'], add:'', foot:'Bugün ₺184 200 · 1,4% başarısız', rows:[
+        [P('pi_3Nx82K',1),M('Selin & Kaan'),P('₺899,00'),M('Apple Pay'),M('25 Eyl 21:10'),B('PAID','ok')],
+        [P('pi_3Nx81Q',1),M('Mert A.'),P('₺139,00'),M('Visa •• 4242'),M('25 Eyl 20:44'),B('FAILED','bad')],
+        [P('pi_3Nx80C',1),M('İrem & Burak'),P('₺139,00'),M('Mastercard •• 1180'),M('25 Eyl 18:02'),B('PAID','ok')],
+        [P('pi_3Nx7ZT',1),M('Ece & Onur'),P('₺139,00'),M('Google Pay'),M('24 Eyl'),B('REFUNDED','mute')]]},
+      Settings: { cols:['Yönetici','Rol','2FA','Son giriş','Durum'], add:'Yönetici ekle', foot:'4 yönetici', rows:[
+        [P('Melis Kara',1),B('OWNER','rose'),B('ON','ok'),M('Şimdi'),st.a()],[P('Tolga Şen',1),B('MODERATOR','pro'),B('ON','ok'),M('2 sa önce'),st.a()],
+        [P('Ayşe Bal',1),B('CONTENT','pro'),B('ON','ok'),M('Dün'),st.a()],[P('Emre Tan',1),B('SUPPORT','mute'),B('OFF','bad'),M('9 gün önce'),st.p()]]}
+    };
+    const t = tables[tab === 'Content Management' ? 'Questions' : tab];
+    const isForm = ['Questions','Challenges','Content Management'].includes(tab);
+    const chal = tab === 'Challenges';
+    const heat = v => ({ t: v ? v + '%' : '', bg: v ? `rgba(231,104,138,${(v/100*0.9).toFixed(2)})` : 'transparent', fg: v > 55 ? '#1A0710' : '#F6EEF1' });
+    const sn = (t, d, on) => ({ t, d, bg: on ? 'rgba(231,104,138,.1)' : '#171016', bd: on ? 'rgba(231,104,138,.4)' : 'rgba(255,230,240,.08)' });
+    return {
+      nav: NAV.map(([i,tt,b]) => ({ i, t:tt, b, go: () => this.setState({ tab: tt }), bg: tab===tt ? 'rgba(231,104,138,.12)' : 'transparent', c: tab===tt ? '#F4B9C8' : '#B3A2AA', w: tab===tt ? 700 : 600 })),
+      title: tab, crumb: 'ADMIN / ' + tab.toUpperCase(),
+      isDash: tab === 'Dashboard', isAnalytics: tab === 'Analytics', isStory: tab === 'Stories', isForm, hasTable: !!t,
+      kpis: [{t:'Active couples',v:'41 870',d:'▲ 6,2%',c:'#7FD1AE'},{t:'Daily games',v:'18 420',d:'▲ 3,8%',c:'#7FD1AE'},{t:'Daily active users',v:'63 105',d:'▲ 4,1%',c:'#7FD1AE'},{t:'New couples',v:'1 284',d:'▲ 12%',c:'#7FD1AE'},{t:'Completed challenges',v:'22 916',d:'▼ 1,2%',c:'#F07A7A'},{t:'Premium subs',v:'12 480',d:'▲ 2,4%',c:'#7FD1AE'},{t:'Revenue · 30g',v:'₺1,42M',d:'▲ 9,6%',c:'#7FD1AE'}],
+      bars: [52,58,55,61,66,72,88,57,60,63,59,70,76,92,61,64,66,62,74,81,95,63,67,70,68,79,86,98,72,76].map((v,i)=>({h:v+'%',c:i===29?'#E7688A':i%7===6||i%7===5?'#8A3450':'#4A2A3A'})),
+      mix: [['This or That','24%'],['Truth or Dare','22%'],['Would You Rather','20%'],['Couple Challenges','16%'],['Secret Questions','12%'],['Couple Story','6%']].map(([t,w])=>({t,w})),
+      akpis: [{t:'DAU',v:'63,1K',d:'▲ 4,1%',c:'#7FD1AE'},{t:'WAU',v:'142K',d:'▲ 3,0%',c:'#7FD1AE'},{t:'MAU',v:'288K',d:'▲ 5,5%',c:'#7FD1AE'},{t:'Games started',v:'24,6K',d:'/ gün',c:'#B3A2AA'},{t:'Games completed',v:'18,4K',d:'75% oran',c:'#B3A2AA'},{t:'Avg session',v:'22 dk',d:'▲ 1,5 dk',c:'#7FD1AE'},{t:'Couple retention W4',v:'46%',d:'▲ 3 puan',c:'#7FD1AE'},{t:'Challenge completion',v:'68%',d:'▼ 1 puan',c:'#F07A7A'},{t:'Premium conversion',v:'8,9%',d:'▲ 0,6 puan',c:'#7FD1AE'}],
+      users3: [[30,55,80],[32,57,82],[35,60,84],[34,62,85],[38,64,88],[41,66,86],[44,70,90],[43,72,92],[47,75,93],[50,78,95],[53,82,97],[56,85,100]].map(([d,w,m])=>({d:d+'%',w:w+'%',m:m+'%'})),
+      cohort: [['Nis',[100,71,58,47,39,34]],['May',[100,74,60,49,41,0]],['Haz',[100,76,63,51,0,0]],['Tem',[100,78,64,0,0,0]],['Ağu',[100,80,0,0,0,0]]].map(([n,v])=>({n,v:v.map(heat)})),
+      funnel: [['Games started','24 612','100%'],['Games completed','18 420','75%'],['2+ games / week','9 870','40%'],['Premium conversion','2 190','8.9%']].map(([t,v,w])=>({t,v,w})),
+      formTitle: chal ? 'Challenge oluştur' : 'Question oluştur',
+      formFields: chal
+        ? [{l:'Category',v:'Flirty',i:'expand_more'},{l:'Level',v:'LV2 · Curious',i:'expand_more'},{l:'Text',v:'Partnerine 60 saniye boyunca gözlerini kaçırmadan bak.',i:''},{l:'Timer',v:'60 saniye',i:'timer'}]
+        : [{l:'Category',v:'Secret Questions',i:'expand_more'},{l:'Difficulty',v:'Flirty',i:'expand_more'},{l:'Mood',v:'Gizemli',i:'expand_more'},{l:'Text',v:'Partnerine henüz hiç söylemediğin romantik bir düşüncen var mı?',i:''}],
+      previewKind: chal ? 'CHALLENGE · 60s' : 'SECRET QUESTION',
+      previewText: chal ? 'Partnerine 60 saniye boyunca gözlerini kaçırmadan bak.' : 'Partnerine henüz hiç söylemediğin romantik bir düşüncen var mı?',
+      storyCols: [
+        {h:'SCENE 1',n:[sn('Rooftop music','Gece yarısı, çatıdan müzik…',1)]},
+        {h:'CHOICES',n:[sn('Go upstairs','→ Scene 2A · 68% seçti',1),sn('Stay outside','→ Scene 2B · 32%')]},
+        {h:'SCENE 2',n:[sn('2A · Empty dance floor','Pikap ve yavaş bir şarkı',1),sn('2B · Rain on the street','Şemsiye tek kişilik')]},
+        {h:'ENDINGS',n:[sn('Skyline dawn','Birlikte gün doğumu · 54%',1),sn('Taxi home','Sessiz bir el tutma · 31%'),sn('Café at 4am','Sıcak çikolata · 15%')]}
+      ],
+      cols: t ? t.cols : [], rows: t ? t.rows : [], foot: t ? t.foot : '', addLabel: t ? t.add : '',
+      filters: ['Tümü','Aktif','Pasif','Premium'].map((x,i)=>({t:x,bg:i===0?'#F6EEF1':'rgba(255,255,255,.04)',c:i===0?'#1A0710':'#B3A2AA'}))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0..1,0" rel="stylesheet">
+<style>body{margin:0;background:#0C080B;color:#F6EEF1;font-family:Manrope,sans-serif;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}a{color:#F4B9C8;text-decoration:none}a:hover{color:#FFFFFF}@keyframes spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(900px 500px at 85% -10%, rgba(107,30,56,.45), transparent 60%),radial-gradient(700px 500px at -10% 30%, rgba(58,23,64,.5), transparent 60%),#0C080B">
+<div style="max-width:1280px;margin:0 auto;padding:48px clamp(20px,4vw,56px) 120px;display:flex;flex-direction:column;gap:88px">
+
+<header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:1px solid rgba(255,230,240,.1);padding-bottom:32px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#B3A2AA">Nocta · Design System v1.0 · 18+</div>
+<h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(56px,8vw,112px);line-height:.9;letter-spacing:-.02em">noc<span style="font-style:italic;color:#F4B9C8">ta</span></h1>
+<p style="margin:0;max-width:520px;color:#B3A2AA;font-size:16px;line-height:1.6;text-wrap:pretty">Gece yarısı sonrası için tasarlanmış, iki kişilik özel bir oyun alanı. Karanlık, sıcak, yavaş — ve her zaman ne yapacağını bilen bir arayüz.</p>
+</div>
+<nav style="display:flex;flex-wrap:wrap;gap:8px">
+<a href="Landing Page.dc.html" style="padding:10px 16px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Landing</a>
+<a href="App Onboarding.dc.html" style="padding:10px 16px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Onboarding + Flow</a>
+<a href="App Core.dc.html" style="padding:10px 16px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">App</a>
+<a href="App Games.dc.html" style="padding:10px 16px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Games</a>
+<a href="Admin Panel.dc.html" style="padding:10px 16px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Admin</a>
+</nav>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">01</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Color</h2></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Dark · primary theme</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px">
+<sc-for list="{{ dark }}" as="c" hint-placeholder-count="9">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="height:96px;border-radius:16px;background:{{ c.v }};border:1px solid rgba(255,230,240,.1)"></div>
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">{{ c.v }} · {{ c.t }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+<sc-for list="{{ semantic }}" as="c" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,230,240,.08)">
+<div style="width:36px;height:36px;border-radius:10px;background:{{ c.v }}"></div>
+<div style="display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">{{ c.v }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA;margin-top:12px">Light · secondary theme</div>
+<div style="padding:24px;border-radius:28px;background:#FBF6F3;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px">
+<sc-for list="{{ light }}" as="c" hint-placeholder-count="7">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="height:80px;border-radius:14px;background:{{ c.v }};border:1px solid rgba(42,21,48,.1)"></div>
+<div style="display:flex;flex-direction:column;gap:2px;color:#2A1530"><span style="font-size:14px;font-weight:700">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6E5A64">{{ c.v }} · {{ c.t }}</span></div>
+</div>
+</sc-for>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA;margin-top:12px">Gradients & glow — used sparingly, only as light, never as fill for text</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+<div style="height:140px;border-radius:24px;background:radial-gradient(120% 90% at 20% 0%, #6B1E38 0%, #2A1530 55%, #0C080B 100%);padding:18px;display:flex;align-items:flex-end;font-family:'JetBrains Mono',monospace;font-size:11px;color:#F6EEF1">g.velvet — hero / game cards</div>
+<div style="height:140px;border-radius:24px;background:radial-gradient(60% 70% at 50% 50%, rgba(231,104,138,.55), transparent 70%),#0C080B;padding:18px;display:flex;align-items:flex-end;font-family:'JetBrains Mono',monospace;font-size:11px;color:#F6EEF1">g.ember — focus glow</div>
+<div style="height:140px;border-radius:24px;background:linear-gradient(135deg,#E7688A,#A88BF0);padding:18px;display:flex;align-items:flex-end;font-family:'JetBrains Mono',monospace;font-size:11px;color:#1A0710">g.duet — avatar rings, XP only</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">02</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Typography</h2></div>
+<p style="margin:0;color:#B3A2AA;max-width:640px;line-height:1.6">Instrument Serif for moments — headlines, game prompts, story scenes. Manrope for everything you tap or read. JetBrains Mono only for codes, timers and meta.</p>
+<div style="display:flex;flex-direction:column;border-top:1px solid rgba(255,230,240,.1)">
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Display · Serif 88/0.92</span><span style="font-family:'Instrument Serif',serif;font-size:clamp(48px,7vw,88px);line-height:.92;letter-spacing:-.02em">Tonight is <i style="color:#F4B9C8">yours.</i></span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">H1 · Serif 48/1.05</span><span style="font-family:'Instrument Serif',serif;font-size:48px;line-height:1.05">Bugün nasıl bir gece?</span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Prompt · Serif 30/1.2</span><span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.2">Partnerine hiç söylemediğin romantik bir düşünceni paylaş.</span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Title · Manrope 700 20</span><span style="font-size:20px;font-weight:700">Continue Game</span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Body · Manrope 500 16/1.55</span><span style="font-size:16px;line-height:1.55;font-weight:500;color:#E9DDE2">Partnerinle arandaki bağı, merakı ve heyecanı keşfet.</span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Caption · Manrope 600 13</span><span style="font-size:13px;font-weight:600;color:#B3A2AA">Together for 2 months · Level 3 Flirty</span></div>
+<div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:24px;align-items:baseline;padding:20px 0;border-bottom:1px solid rgba(255,230,240,.1)"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">Overline · Mono 11 +16%</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#F4B9C8">Tonight's game · 23:41:12</span></div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">03</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Tokens</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Spacing · 4pt</div>
+<sc-for list="{{ spacing }}" as="s" hint-placeholder-count="10"><div style="display:flex;align-items:center;gap:12px"><span style="width:44px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">s-{{ s.n }}</span><div style="height:10px;width:{{ s.w }};border-radius:3px;background:#E7688A"></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px">{{ s.v }}</span></div></sc-for>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Radius</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<sc-for list="{{ radius }}" as="r" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;gap:6px;align-items:center"><div style="width:64px;height:64px;border:1.5px solid #F4B9C8;border-radius:{{ r.v }};background:rgba(231,104,138,.08)"></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#B3A2AA">{{ r.n }} · {{ r.v }}</span></div></sc-for>
+</div>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Elevation · Blur · Border</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="padding:14px;border-radius:16px;background:#171016;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 24px rgba(0,0,0,.35);font-family:'JetBrains Mono',monospace;font-size:11px">e1 · 0 8 24 / .35 — cards</div>
+<div style="padding:14px;border-radius:16px;background:#211720;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,230,240,.08);font-family:'JetBrains Mono',monospace;font-size:11px">e2 · 0 24 60 / .55 — sheets, modals</div>
+<div style="padding:14px;border-radius:16px;background:#171016;box-shadow:0 0 40px rgba(231,104,138,.35);border:1px solid rgba(231,104,138,.4);font-family:'JetBrains Mono',monospace;font-size:11px">glow · 0 0 40 rose/.35 — active game</div>
+<div style="padding:14px;border-radius:16px;background:rgba(40,24,36,.5);backdrop-filter:blur(20px);border:1px solid rgba(255,230,240,.12);font-family:'JetBrains Mono',monospace;font-size:11px">glass · blur 20 · border pearl/.12</div>
+</div>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Motion</div>
+<sc-for list="{{ motion }}" as="m" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:90px 60px minmax(0,1fr);gap:8px;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(255,230,240,.06)"><span style="font-weight:700">{{ m.n }}</span><span style="font-family:'JetBrains Mono',monospace;color:#F4B9C8">{{ m.v }}</span><span style="color:#B3A2AA">{{ m.u }}</span></div></sc-for>
+<span style="font-size:12px;color:#B3A2AA;line-height:1.5">Ease: cubic-bezier(.2,.8,.2,1). prefers-reduced-motion → fades only, particles off.</span>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Breakpoints</div>
+<sc-for list="{{ bps }}" as="b" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,230,240,.06)"><div style="display:flex;flex-direction:column"><span style="font-weight:700">{{ b.n }}</span><span style="font-size:12px;color:#B3A2AA">{{ b.u }}</span></div><span style="font-family:'JetBrains Mono',monospace;color:#F4B9C8">{{ b.v }}</span></div></sc-for>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Accessibility</div>
+<sc-for list="{{ a11y }}" as="x" hint-placeholder-count="5"><div style="display:flex;gap:10px;font-size:13px;line-height:1.45"><span style="font-family:'Material Symbols Rounded';color:#7FD1AE;font-size:18px">check</span><span style="color:#E9DDE2">{{ x }}</span></div></sc-for>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">04</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Buttons & states</h2></div>
+<div style="overflow-x:auto;padding:28px;border-radius:28px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08)">
+<div style="display:grid;grid-template-columns:100px repeat(7,minmax(128px,1fr));gap:14px;align-items:center;min-width:1060px">
+<span></span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Default</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Hover</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Active</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Focus</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Disabled</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Loading</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">Success</span>
+<span style="font-size:13px;font-weight:700">Primary</span>
+<button style="height:52px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 15px Manrope,sans-serif;cursor:pointer" style-hover="background:#F07D9C">Oyuna Başla</button>
+<button style="height:52px;border:0;border-radius:999px;background:#F07D9C;color:#1A0710;font:700 15px Manrope,sans-serif;box-shadow:0 0 32px rgba(231,104,138,.45)">Oyuna Başla</button>
+<button style="height:52px;border:0;border-radius:999px;background:#D45477;color:#1A0710;font:700 15px Manrope,sans-serif;transform:scale(.97)">Oyuna Başla</button>
+<button style="height:52px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 15px Manrope,sans-serif;outline:2px solid #F6EEF1;outline-offset:3px">Oyuna Başla</button>
+<button style="height:52px;border:0;border-radius:999px;background:#3A2A34;color:#7F6D76;font:700 15px Manrope,sans-serif">Oyuna Başla</button>
+<button style="height:52px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(26,7,16,.25);border-top-color:#1A0710;animation:spin .8s linear infinite"></span></button>
+<button style="height:52px;border:0;border-radius:999px;background:#7FD1AE;color:#0B2019;font:700 15px Manrope,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px"><span style="font-family:'Material Symbols Rounded';font-size:20px">check</span>Hazır</button>
+<span style="font-size:13px;font-weight:700">Secondary</span>
+<button style="height:52px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);color:#F6EEF1;font:600 15px Manrope,sans-serif">Nasıl Çalışıyor?</button>
+<button style="height:52px;border-radius:999px;background:rgba(255,255,255,.09);border:1px solid rgba(255,230,240,.3);color:#F6EEF1;font:600 15px Manrope,sans-serif">Nasıl Çalışıyor?</button>
+<button style="height:52px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,230,240,.3);color:#F6EEF1;font:600 15px Manrope,sans-serif;transform:scale(.97)">Nasıl Çalışıyor?</button>
+<button style="height:52px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);color:#F6EEF1;font:600 15px Manrope,sans-serif;outline:2px solid #F4B9C8;outline-offset:3px">Nasıl Çalışıyor?</button>
+<button style="height:52px;border-radius:999px;background:transparent;border:1px solid rgba(255,230,240,.08);color:#6B5A63;font:600 15px Manrope,sans-serif">Nasıl Çalışıyor?</button>
+<button style="height:52px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);display:flex;align-items:center;justify-content:center"><span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(246,238,241,.2);border-top-color:#F6EEF1;animation:spin .8s linear infinite"></span></button>
+<button style="height:52px;border-radius:999px;background:rgba(127,209,174,.1);border:1px solid rgba(127,209,174,.5);color:#7FD1AE;font:600 15px Manrope,sans-serif">Kaydedildi</button>
+<span style="font-size:13px;font-weight:700">Ghost / Danger</span>
+<button style="height:44px;border:0;background:transparent;color:#F4B9C8;font:600 15px Manrope,sans-serif">Skip</button>
+<button style="height:44px;border:0;background:rgba(244,185,200,.08);border-radius:999px;color:#F4B9C8;font:600 15px Manrope,sans-serif">Skip</button>
+<button style="height:52px;border-radius:999px;background:rgba(240,122,122,.12);border:1px solid rgba(240,122,122,.5);color:#F07A7A;font:700 15px Manrope,sans-serif">Disconnect</button>
+<button style="height:52px;border-radius:999px;background:#F07A7A;border:0;color:#2A0A0A;font:700 15px Manrope,sans-serif">Delete forever</button>
+<button style="height:52px;border-radius:999px;background:transparent;border:1px solid rgba(255,230,240,.08);color:#6B5A63;font:700 15px Manrope,sans-serif">Delete forever</button>
+<span style="font-size:12px;color:#B3A2AA;line-height:1.4">Min hit area 44 × 44. Only one primary per screen.</span>
+<button style="height:52px;border-radius:999px;background:rgba(240,122,122,.12);border:1px solid #F07A7A;color:#F07A7A;font:700 15px Manrope,sans-serif;display:flex;align-items:center;justify-content:center;gap:6px"><span style="font-family:'Material Symbols Rounded';font-size:20px">error</span>Retry</button>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">05</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Inputs & controls</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:16px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Input</div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#B3A2AA">E-posta · default</span><div style="height:52px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,230,240,.12);display:flex;align-items:center;padding:0 16px;color:#8E7C85;font-size:15px">sen@ornek.com</div></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#F4B9C8">E-posta · focus</span><div style="height:52px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid #E7688A;box-shadow:0 0 0 4px rgba(231,104,138,.15);display:flex;align-items:center;padding:0 16px;font-size:15px">ela@nocta.app<span style="width:1.5px;height:20px;background:#E7688A;margin-left:2px"></span></div></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#F07A7A">Oda kodu · error</span><div style="height:52px;border-radius:16px;background:rgba(240,122,122,.06);border:1px solid #F07A7A;display:flex;align-items:center;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.1em">ABCD-12</div><span style="font-size:12px;color:#F07A7A">Kod 8 karakter olmalı. Örn. ABCD-1234</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#7FD1AE">Oda kodu · success</span><div style="height:52px;border-radius:16px;background:rgba(127,209,174,.06);border:1px solid #7FD1AE;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.1em">NOCT-4812<span style="font-family:'Material Symbols Rounded';color:#7FD1AE">check_circle</span></div></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#6B5A63">Disabled</span><div style="height:52px;border-radius:16px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,230,240,.1);display:flex;align-items:center;padding:0 16px;color:#6B5A63;font-size:15px">Partner bağlı değil</div></label>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:20px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Toggle</div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600">Ekran görüntüsünü engelle</span><div style="width:52px;height:32px;border-radius:16px;background:#E7688A;padding:3px;display:flex;justify-content:flex-end"><div style="width:26px;height:26px;border-radius:50%;background:#FFF"></div></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600">Bildirim önizlemesi</span><div style="width:52px;height:32px;border-radius:16px;background:#3A2A34;padding:3px;display:flex"><div style="width:26px;height:26px;border-radius:50%;background:#B3A2AA"></div></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;opacity:.4"><span style="font-size:15px;font-weight:600">Wild seviyesi · kilitli</span><div style="width:52px;height:32px;border-radius:16px;background:#3A2A34;padding:3px;display:flex"><div style="width:26px;height:26px;border-radius:50%;background:#6B5A63"></div></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA;margin-top:4px">Segmented control</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);padding:4px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.08)">
+<span style="height:40px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#B3A2AA">Soft</span>
+<span style="height:40px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border-radius:999px;background:#F6EEF1;color:#1A0710">Flirty</span>
+<span style="height:40px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#B3A2AA">Bold</span>
+<span style="height:40px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#B3A2AA">Wild</span>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA;margin-top:4px">Chips / mood</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="padding:9px 14px;border-radius:999px;border:1px solid #E7688A;background:rgba(231,104,138,.14);font-size:13px;font-weight:700;color:#F4B9C8">Flörtöz</span>
+<span style="padding:9px 14px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Romantik</span>
+<span style="padding:9px 14px;border-radius:999px;border:1px solid rgba(255,230,240,.14);font-size:13px;font-weight:600">Gizemli</span>
+<span style="padding:9px 14px;border-radius:999px;border:1px solid rgba(255,230,240,.06);font-size:13px;font-weight:600;color:#6B5A63">Cesur · Premium</span>
+</div>
+</div>
+<div style="padding:24px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:20px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Avatar</div>
+<div style="display:flex;align-items:center;gap:16px">
+<div style="width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(135deg,#E7688A,#A88BF0)"><div style="width:100%;height:100%;border-radius:50%;background:#2A1530;border:2px solid #0C080B;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:28px">E</div></div>
+<div style="position:relative;width:48px;height:48px;border-radius:50%;background:#3A1D2B;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:22px">D<span style="position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:#7FD1AE;border:2.5px solid #171016"></span></div>
+<div style="display:flex"><div style="width:40px;height:40px;border-radius:50%;background:#2A1530;border:2px solid #171016;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:18px">E</div><div style="width:40px;height:40px;border-radius:50%;background:#3A1D2B;border:2px solid #171016;margin-left:-12px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:18px">D</div></div>
+<div style="width:40px;height:40px;border-radius:50%;border:1.5px dashed rgba(255,230,240,.3);display:flex;align-items:center;justify-content:center;color:#B3A2AA;font-family:'Material Symbols Rounded'">add</div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Badge</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+<span style="padding:4px 10px;border-radius:999px;background:rgba(231,104,138,.16);color:#F4B9C8;font-size:11px;font-weight:800;letter-spacing:.06em">FLIRTY</span>
+<span style="padding:4px 10px;border-radius:999px;background:rgba(168,139,240,.16);color:#C9B8F7;font-size:11px;font-weight:800;letter-spacing:.06em">PREMIUM</span>
+<span style="padding:4px 10px;border-radius:999px;background:rgba(127,209,174,.14);color:#7FD1AE;font-size:11px;font-weight:800;letter-spacing:.06em">ONLINE</span>
+<span style="padding:4px 10px;border-radius:999px;background:rgba(242,194,123,.14);color:#F2C27B;font-size:11px;font-weight:800;letter-spacing:.06em">PENDING</span>
+<span style="min-width:20px;height:20px;border-radius:10px;background:#E7688A;color:#1A0710;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 6px">3</span>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B3A2AA">Progress · Timer</div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>Level 3 · Flirty</span><span style="color:#B3A2AA">1 240 / 2 000 XP</span></div><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08)"><div style="width:62%;height:100%;border-radius:3px;background:linear-gradient(90deg,#E7688A,#A88BF0)"></div></div></div>
+<div style="display:flex;align-items:center;gap:16px">
+<div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#E7688A 0 68%, rgba(255,255,255,.08) 68% 100%);display:flex;align-items:center;justify-content:center"><div style="width:62px;height:62px;border-radius:50%;background:#171016;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:16px">0:41</div></div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:26px;letter-spacing:.04em">23:41:12</span>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">06</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Cards</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+<div style="position:relative;height:340px;border-radius:28px;overflow:hidden;background:radial-gradient(120% 90% at 20% 0%, #6B1E38 0%, #2A1530 55%, #0C080B 100%);border:1px solid rgba(255,230,240,.1);padding:22px;display:flex;flex-direction:column;justify-content:space-between">
+<div style="display:flex;justify-content:space-between"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;color:#F4B9C8">GAME 01</span><span style="padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.3);font-size:11px;font-weight:700">8 min</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:'Instrument Serif',serif;font-size:40px;line-height:1">Truth <i style="color:#F4B9C8">or</i> Dare</div><div style="font-size:13px;color:#E0CFD6">Klasik ama size göre ayarlanmış.</div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">GameCard · default</div>
+</div>
+<div style="border-radius:28px;background:#171016;border:1px solid rgba(231,104,138,.45);box-shadow:0 0 40px rgba(231,104,138,.2);padding:22px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="padding:4px 10px;border-radius:999px;background:rgba(231,104,138,.16);color:#F4B9C8;font-size:11px;font-weight:800;letter-spacing:.06em">FLIRTY</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#B3A2AA">60s</span></div>
+<div style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.15">Partnerine 60 saniye boyunca gözlerini kaçırmadan bak.</div>
+<div style="height:4px;border-radius:2px;background:rgba(255,255,255,.08)"><div style="width:40%;height:100%;border-radius:2px;background:#E7688A"></div></div>
+<button style="height:48px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 14px Manrope,sans-serif">Complete Challenge</button>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">ChallengeCard · active</div>
+</div>
+<div style="border-radius:28px;background:#171016;border:1px solid rgba(255,230,240,.1);padding:22px;display:flex;flex-direction:column;gap:14px">
+<span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;color:#C9B8F7">SECRET · 1/5</span>
+<div style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1.2">Seni benimle ilk ne zaman hayal ettin?</div>
+<div style="height:88px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,230,240,.08);display:flex;align-items:center;justify-content:center;gap:8px;color:#B3A2AA;font-size:13px;overflow:hidden;position:relative"><span style="filter:blur(6px);color:#F6EEF1;font-size:15px">O kahve dükkânında, ikinci kez güldüğünde…</span><span style="position:absolute;font-family:'Material Symbols Rounded'">lock</span></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">QuestionCard · locked answer</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">07</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Overlays & feedback</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+<div style="position:relative;height:360px;border-radius:28px;overflow:hidden;background:#0C080B;border:1px solid rgba(255,230,240,.08)">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(8px)"></div>
+<div style="position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);padding:24px;border-radius:24px;background:#211720;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px">
+<span style="font-family:'Material Symbols Rounded';font-size:28px;color:#F07A7A">link_off</span>
+<div style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1.1">Partner bağlantısını kes?</div>
+<div style="font-size:13px;color:#B3A2AA;line-height:1.5">Ortak oyunlar durur. Anılarınız 30 gün saklanır, sonra silinir.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><button style="height:46px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);color:#F6EEF1;font:600 14px Manrope,sans-serif">Vazgeç</button><button style="height:46px;border-radius:999px;background:#F07A7A;border:0;color:#2A0A0A;font:700 14px Manrope,sans-serif">Bağlantıyı kes</button></div>
+</div>
+<span style="position:absolute;left:16px;top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">Dialog</span>
+</div>
+<div style="position:relative;height:360px;border-radius:28px;overflow:hidden;background:#0C080B;border:1px solid rgba(255,230,240,.08)">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 24px;border-radius:28px 28px 0 0;background:#211720;border-top:1px solid rgba(255,230,240,.1);display:flex;flex-direction:column;gap:14px">
+<div style="width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.2);align-self:center"></div>
+<div style="font-size:17px;font-weight:700">Send a Challenge</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:16px;background:rgba(231,104,138,.1);border:1px solid rgba(231,104,138,.4);font-size:14px;font-weight:600">Bana bir sesli mesaj bırak<span style="font-family:'Material Symbols Rounded';color:#F4B9C8">radio_button_checked</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:16px;background:rgba(255,255,255,.03);font-size:14px;font-weight:600">3 iltifat gönder<span style="font-family:'Material Symbols Rounded';color:#6B5A63">radio_button_unchecked</span></div>
+</div>
+<button style="height:48px;border:0;border-radius:999px;background:#E7688A;color:#1A0710;font:700 14px Manrope,sans-serif">Gönder</button>
+</div>
+<span style="position:absolute;left:16px;top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">BottomSheet</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;background:rgba(40,24,36,.7);backdrop-filter:blur(20px);border:1px solid rgba(255,230,240,.12)"><div style="width:36px;height:36px;border-radius:50%;background:#3A1D2B;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:17px">D</div><div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:700">Deniz sent you a challenge.</span><span style="font-size:12px;color:#B3A2AA">“Bana bir sesli mesaj bırak” · şimdi</span></div></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;background:#F6EEF1;color:#1A0710;align-self:flex-start;font-size:13.5px;font-weight:700"><span style="font-family:'Material Symbols Rounded';color:#1F7A55">check_circle</span>Challenge tamamlandı · +40 XP</div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;background:rgba(240,122,122,.14);border:1px solid rgba(240,122,122,.4);color:#F6EEF1;align-self:flex-start;font-size:13.5px;font-weight:600"><span style="font-family:'Material Symbols Rounded';color:#F07A7A">wifi_off</span>Bağlantı koptu · yeniden deneniyor</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin-top:4px"><span style="padding:8px 12px;border-radius:10px;background:#F6EEF1;color:#1A0710;font-size:12px;font-weight:600;max-width:240px;line-height:1.4">Wild seviyesi yalnızca ikiniz de seçtiğinizde açılır.</span><span style="width:10px;height:10px;background:#F6EEF1;transform:rotate(45deg);margin:-11px 0 0 18px"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA;margin-top:4px">Toast · Notification · Tooltip</span></div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+<div style="align-self:flex-start;max-width:78%;padding:11px 14px;border-radius:20px 20px 20px 6px;background:#211720;font-size:14px;line-height:1.4">Bu akşam story mode?</div>
+<div style="align-self:flex-end;max-width:78%;padding:11px 14px;border-radius:20px 20px 6px 20px;background:#E7688A;color:#1A0710;font-size:14px;font-weight:600;line-height:1.4">Midnight Escape'i açtım bile</div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA">ChatBubble · received / sent</span>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">08</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Empty & error states</h2></div>
+<p style="margin:0;color:#B3A2AA;max-width:640px;line-height:1.6">Hiçbir boş ekran çıkmaz sokak değildir. Her biri tek bir sakin cümle ve tek bir sonraki adım verir.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+<sc-for list="{{ states }}" as="s" hint-placeholder-count="10">
+<div style="padding:24px 20px;border-radius:24px;background:rgba(23,16,22,.7);border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+<div style="width:48px;height:48px;border-radius:50%;background:{{ s.bg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:{{ s.c }}">{{ s.i }}</span></div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#B3A2AA">{{ s.k }}</span>
+<div style="font-family:'Instrument Serif',serif;font-size:24px;line-height:1.1">{{ s.t }}</div>
+<div style="font-size:13px;color:#B3A2AA;line-height:1.5;text-wrap:pretty">{{ s.d }}</div>
+<button style="margin-top:auto;height:42px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,240,.16);color:#F6EEF1;font:600 13px Manrope,sans-serif">{{ s.a }}</button>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E7688A">09</span><h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px">Navigation</h2></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+<div style="position:relative;height:110px;max-width:375px;border-radius:24px;overflow:hidden;background:#0C080B;border:1px solid rgba(255,230,240,.08)">
+<dc-import name="BottomNav" active="Home" style="position:absolute;left:0;right:0;bottom:0;height:84px" hint-size="100%,84px"></dc-import>
+</div>
+<div style="width:240px;padding:20px 14px;border-radius:24px;background:#120C11;border:1px solid rgba(255,230,240,.08);display:flex;flex-direction:column;gap:4px">
+<div style="font-family:'Instrument Serif',serif;font-size:28px;padding:0 10px 14px">noc<i style="color:#F4B9C8">ta</i></div>
+<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;background:rgba(231,104,138,.12);color:#F4B9C8;font-size:14px;font-weight:700"><span style="font-family:'Material Symbols Rounded';font-size:21px">home</span>Home</div>
+<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:#B3A2AA;font-size:14px;font-weight:600"><span style="font-family:'Material Symbols Rounded';font-size:21px">playing_cards</span>Games</div>
+<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:#B3A2AA;font-size:14px;font-weight:600"><span style="font-family:'Material Symbols Rounded';font-size:21px">bolt</span>Challenges</div>
+<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;color:#B3A2AA;font-size:14px;font-weight:600"><span style="font-family:'Material Symbols Rounded';font-size:21px">chat_bubble</span>Chat<span style="margin-left:auto;min-width:20px;height:20px;border-radius:10px;background:#E7688A;color:#1A0710;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center">3</span></div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#B3A2AA;padding:10px 12px 0">Sidebar · desktop ≥1024</span>
+</div>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      dark: [
+        {n:'Ink',v:'#0C080B',t:'base'},{n:'Velvet',v:'#171016',t:'surface'},{n:'Dusk',v:'#211720',t:'raised'},{n:'Plum',v:'#2A1530',t:'depth'},{n:'Wine',v:'#6B1E38',t:'glow'},
+        {n:'Rose',v:'#E7688A',t:'primary'},{n:'Blush',v:'#F4B9C8',t:'accent text'},{n:'Iris',v:'#A88BF0',t:'secondary'},{n:'Pearl',v:'#F6EEF1',t:'text'},{n:'Mist',v:'#B3A2AA',t:'muted 7.9:1'}
+      ],
+      semantic: [{n:'Success',v:'#7FD1AE'},{n:'Warning',v:'#F2C27B'},{n:'Error',v:'#F07A7A'},{n:'Info',v:'#A88BF0'}],
+      light: [{n:'Warm White',v:'#FBF6F3',t:'base'},{n:'Shell',v:'#F3E7E6',t:'surface'},{n:'Soft Rose',v:'#F0C9D2',t:'tint'},{n:'Rose Deep',v:'#B83E62',t:'primary'},{n:'Iris Deep',v:'#6E4FC9',t:'secondary'},{n:'Plum Ink',v:'#2A1530',t:'text'},{n:'Dust',v:'#6E5A64',t:'muted'}],
+      spacing: [4,8,12,16,20,24,32,40,56,80].map((v,i)=>({n:i+1,v:v+'px',w:(v*2)+'px'})),
+      radius: [{n:'xs',v:'8px'},{n:'sm',v:'12px'},{n:'md',v:'16px'},{n:'lg',v:'24px'},{n:'xl',v:'32px'},{n:'pill',v:'999px'}],
+      motion: [{n:'instant',v:'120ms',u:'press, toggle'},{n:'quick',v:'200ms',u:'hover, chip select'},{n:'base',v:'320ms',u:'card swipe, sheet'},{n:'reveal',v:'600ms',u:'blur → answer'},{n:'cinematic',v:'900ms',u:'story scene, connected'}],
+      bps: [{n:'Mobile',v:'375',u:'bottom nav, 1 column'},{n:'Tablet',v:'768',u:'2 columns, floating nav'},{n:'Desktop',v:'1440',u:'sidebar, 12-col, cinematic hero'}],
+      a11y: ['Metin kontrastı ≥ 4.5:1 (Mist on Ink 7.9:1)','Dokunma alanı ≥ 44 × 44px','Her etkileşimde 2px Pearl focus ring','Tüm ikonlarda aria-label, oyun kartlarında live region','Reduced motion: partikül ve blur geçişleri kapalı'],
+      states: [
+        {k:'Empty · partner',i:'favorite',bg:'rgba(231,104,138,.14)',c:'#F4B9C8',t:'Your other half is waiting.',d:'Davet kodunu paylaş, ikiniz de burada olunca oyun başlar.',a:'Davet et'},
+        {k:'Empty · games',i:'nightlight',bg:'rgba(168,139,240,.14)',c:'#C9B8F7',t:'Your story starts tonight.',d:'İlk oyunu seç. 5 dakikalık Quick Play iyi bir başlangıç.',a:'Quick Play'},
+        {k:'Empty · memories',i:'auto_stories',bg:'rgba(244,185,200,.12)',c:'#F4B9C8',t:'Your memories will appear here.',d:'Tamamladığınız her oyun buraya bir sayfa olarak eklenir.',a:'Oyun seç'},
+        {k:'Error · pairing',i:'heart_broken',bg:'rgba(240,122,122,.14)',c:'#F07A7A',t:'Bağlantı kurulamadı.',d:'Partnerin daveti henüz açmamış olabilir. Linki tekrar gönder.',a:'Tekrar gönder'},
+        {k:'Error · room code',i:'pin',bg:'rgba(240,122,122,.14)',c:'#F07A7A',t:'Bu oda kodu geçersiz.',d:'Kodlar 24 saat geçerlidir. Partnerinden yeni bir kod iste.',a:'Kodu düzenle'},
+        {k:'Error · disconnected',i:'wifi_off',bg:'rgba(242,194,123,.14)',c:'#F2C27B',t:'Bağlantı koptu.',d:'Oyununuz kaydedildi. Geri geldiğinde kaldığınız yerden devam.',a:'Yeniden bağlan'},
+        {k:'Error · sync',i:'sync_problem',bg:'rgba(242,194,123,.14)',c:'#F2C27B',t:'Kartlarınız eşleşmedi.',d:'İki cihaz farklı kartta. Tek dokunuşla senkronize edelim.',a:'Senkronize et'},
+        {k:'Error · session',i:'lock_clock',bg:'rgba(168,139,240,.14)',c:'#C9B8F7',t:'Oturum süresi doldu.',d:'Güvenliğin için 30 dk hareketsizlikten sonra çıkış yaptık.',a:'Tekrar giriş yap'},
+        {k:'Error · unavailable',i:'block',bg:'rgba(255,255,255,.06)',c:'#B3A2AA',t:'Bu oyun şu an kapalı.',d:'Güncelleme yapıyoruz. Bu sırada This or That açık.',a:'This or That'},
+        {k:'Error · payment',i:'credit_card_off',bg:'rgba(240,122,122,.14)',c:'#F07A7A',t:'Ödeme tamamlanmadı.',d:'Kartından ücret alınmadı. Başka bir kart dene veya bankanı kontrol et.',a:'Tekrar dene'}
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
