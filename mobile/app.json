@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "Nocta",
+    "slug": "nocta",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "nocta",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0C080B",
+    "ios": {
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "app.nocta.ios",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Uygulama kilidini Face ID ile açmak için kullanılır.",
+        "NSCameraUsageDescription": "Partnerinin QR davet kodunu okumak ve sohbette fotoğraf çekmek için kamera kullanılır.",
+        "NSPhotoLibraryUsageDescription": "Sohbette fotoğraf paylaşmak için galerine erişim gerekir.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.nocta.android",
+      "adaptiveIcon": {
+        "backgroundColor": "#0C080B",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0C080B",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 96
+        }
+      ],
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#E7688A"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sohbette fotoğraf paylaşmak için galerine erişim gerekir.",
+          "cameraPermission": "Sohbette fotoğraf çekmek için kamera kullanılır."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Partnerinin QR davet kodunu okumak için kamera kullanılır.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Uygulama kilidini Face ID ile açmak için kullanılır."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": true
+    }
+  }
+}
