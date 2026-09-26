@@ -9,9 +9,9 @@ Nocta çift oyunları uygulamasının web yönetim paneli. Vite + React 18 + Typ
 | Genel Bakış | Günlük göstergeler (düne göre değişim), 30 günlük oyun grafiği, oyun dağılımı, son raporlar |
 | Kullanıcılar | Arama, filtreler (Tümü/Aktif/Askıda/Premium/Partnersiz), askıya alma, silme (yalnızca sahip) |
 | Çiftler | Flört seviyesi, oyun sayısı, son aktivite, premium verme/kaldırma, bağlantıyı sonlandırma |
-| Oyunlar | Oyunları düzenleme, 9 oyun motorundan birini (Test dahil) kullanan yeni oyun oluşturma, oynanma istatistikleri |
+| Oyunlar | Oyunları düzenleme, 11 oyun motorundan birini (Test, Emoji ve Kart Seç dahil) kullanan yeni oyun oluşturma, satır menüsünden kategorilere/sorulara geçiş, oynanma istatistikleri |
 | Kategoriler | Her oyun için sınırsız kategori, soru sayıları, silmede soru sayısını gösteren onay |
-| Sorular / Görevler | Filtreler (motor filtresi dahil), toplu işlemler, motora göre değişen form, canlı önizleme, CSV dışa aktarma, toplu içe aktarma (satır/CSV/JSON) |
+| Sorular / Görevler | Filtreler (motor filtresi dahil), toplu işlemler, motora göre değişen form (emoji paleti, kart görseli yükleme dahil), canlı önizleme, CSV dışa aktarma, toplu içe aktarma (satır/CSV/JSON) |
 | Testler | 4 seçenekli testler: test listesi (soru sayısı, tür özeti, premium/aktif), yeni test, düzenleme/silme, her testin soruları |
 | Hikâyeler | Bölüm sütunlarında sahne ve seçim düzenleyicisi, seçim yüzdeleri, yapı doğrulaması |
 | Raporlar | Durum/öncelik filtreleri, ayrıntı paneli, bildirilen mesaj, not, kullanıcıyı askıya alma |
@@ -32,6 +32,32 @@ Rol bazlı erişim: **Sahip** her şeyi yapar. **İçerik editörü** içerikler
 - Toplu içe aktarma (satır satır): `Soru | A | B | C | D | doğru` — doğru alanı A–D ya da boş (uyum). CSV'de `secenekler` (| ile) veya `a,b,c,d` sütunları ve `dogru` sütunu; JSON'da `options` ve `correct` (`"A"`–`"D"`, 0–3 ya da `null`).
 - CSV dışa aktarma seçenekleri (`secenekler` ve ayrı `a`–`d` sütunları) ve doğru cevabı (`dogru`) içerir.
 - Test soruları **Sorular** bölümünde de “Test (4 seçenek)” motor filtresiyle görülebilir.
+
+## Emojilerle Anlat ve Kart Seç
+
+Bu iki oyunun ayrı bir menüsü yoktur: **Oyunlar → (satır menüsü) Kategoriler / Soruları gör** ya da **Sorular** bölümünde motor filtresi (“Emoji (emoji şıklar)”, “Kart Seç (resimli kartlar)”) ile yönetilir. Kategoriler sayfasında oyuna göre filtreleyince “Bu oyunun tüm soruları →” bağlantısı çıkar; `/sorular?oyun=<oyun id>` bağlantısı doğrudan o oyunun sorularını açar. Yeni oyunlar **Oyunlar → Yeni oyun** ekranında bu motorlar seçilerek oluşturulabilir.
+
+### Emoji (`emoji`, ör. **Emojilerle Anlat**)
+
+- Her soruda **2–6 emoji şık** vardır (hepsi dolu ve birbirinden farklı, en fazla 40 karakter). Şık kutusunu seçip alttaki **emoji paletinden** (Aşk, Yüz, Yemek, Aktivite, Seyahat, Nesne · 120 emoji) tıklayarak ekleyebilirsiniz; ⌫ son emojiyi siler. Harf içeren şıklar için uyarı gösterilir.
+- **Doğru cevap**: A–F ya da “Yok (eşleşme modu)” (`questions.correct_index`, 0–5 ya da boş). Şık silinince doğru cevap kaydırılır.
+- Önizleme emojileri büyük karolar hâlinde (2 sütun) gösterir, doğru şık yeşil vurgulanır. Listede şıklar satır içinde ve DOĞRU / EŞLEŞME rozetiyle görünür.
+- Toplu içe aktarma (satır satır): `Soru | 😀 | 😍 | 🙈 | 🔥 | doğru` — son alan tek harf (A–F) ya da boşsa doğru cevap kabul edilir. CSV: `secenekler` (| ile) ve `dogru`; JSON: `options`, `correct`.
+
+### Kart Seç (`cards`, ör. **Kart Seç**)
+
+- Her soruda **2–6 kart** vardır: başlık (`options[i]`, zorunlu, en fazla 60 karakter) ve isteğe bağlı görsel (`questions.media[i]`). `media` her zaman kart sayısı kadar uzunluktadır; görseli olmayan kart için boş metin (`""`) saklanır. Doğru cevap yoktur (`correct_index` her zaman boş); partnerler aynı kartı seçmeye çalışır.
+- Kartlar oklarla sıralanır; başlık ve görsel birlikte taşınır. Önizleme kartları görselleriyle 2 sütunlu ızgarada, liste küçük görsel şeridiyle gösterir.
+- Toplu içe aktarma (satır satır): `Soru | Kart1 | Kart2 | Kart3 | Kart4` — görseller sonradan soruyu düzenleyerek eklenir. CSV'de isteğe bağlı `gorseller` sütunu (| ile, kartlarla aynı sırada), JSON'da `media` desteklenir.
+- CSV dışa aktarma (Sorular) `motor`, `gorseller` (kart görsel adresleri) ve `dogru` sütunlarını içerir.
+
+### Kart görselleri (yükleme notları)
+
+- Görseller herkese açık **`card-images`** deposuna yüklenir: **Görsel yükle** düğmesi, dosyayı karta sürükleyip bırakma ya da görsel adresi (`https://…`) yapıştırma. Yükleme sırasında ilerleme yüzdesi gösterilir; yükleme bitene kadar kaydetme kapalıdır.
+- Yalnızca **JPEG, PNG, WebP, GIF** ve en fazla **5 MB**; panel bunu yüklemeden önce denetler, depo da aynı sınırları uygular.
+- Dosya yolu: `<oyun id>/<soru id ya da new>/<rastgele uuid>.<uzantı>`; karta herkese açık adres yazılır.
+- Yükleme/silme yetkisi yalnızca **Sahip** ve **İçerik editörü** rollerindedir (depo RLS kuralları). Diğer roller içeriği yalnızca görüntüler.
+- Temizlik (en iyi çaba): kaydedilmeden kaldırılan ya da düzenleyici kapatılınca kaydedilmemiş kalan yüklemeler silinir; kayıttan çıkarılan görseller kaydetmeden sonra silinir; soru, kategori ya da Kart Seç oyunu silinirken ilgili görseller de depodan kaldırılır. Başka bir soruda hâlâ kullanılan adresler ve bu deponun dışındaki (yapıştırılmış) adresler silinmez.
 
 ## Kurulum
 

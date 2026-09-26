@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { mustAffect, unwrap, useLoad } from '../lib/data';
 import { loadAnalytics } from '../lib/analytics';
-import { ENGINES, ENGINE_LABEL, type Engine } from '../lib/constants';
+import { normalizeMedia, removeCardImages } from '../lib/cardImages';
+import { ENGINES, ENGINE_LABEL, QUESTION_ENGINES, type Engine } from '../lib/constants';
 import { num, pct, slugify } from '../lib/format';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -27,7 +28,10 @@ export default function Games() {
   const { perms } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [edit, setEdit] = useState<(Omit<Game, 'id'> & { id?: string }) | null>(null);
+  /** Oyunun içeriğine giden yol: hikâye → Hikâyeler, test → Testler, görev → Görevler, diğerleri → Sorular (oyun filtresiyle). */
+  const contentPath = (g: Game) => g.engine === 'story' ? '/hikayeler' : g.engine === 'quiz' ? `/testler?oyun=${g.id}` : g.engine === 'challenges' ? `/gorevler?oyun=${g.id}` : QUESTION_ENGINES.includes(g.engine) ? `/sorular?oyun=${g.id}` : null;
 
   const { data, error, loading, reload, setData } = useLoad(async () =>
     unwrap(await supabase.from('games').select('*, categories(count)').order('sort').order('created_at')) as Game[], []);
@@ -58,7 +62,14 @@ export default function Games() {
     });
     if (!ok) return;
     try {
+      // Kart Seç: oyunla birlikte silinecek soruların görselleri depodan da kaldırılır (en iyi çaba)
+      let imgs: string[] = [];
+      if (g.engine === 'cards') {
+        const m = await supabase.from('questions').select('media,category:categories!inner(game_id)').eq('category.game_id', g.id).limit(10000);
+        imgs = ((m.data ?? []) as { media: unknown }[]).flatMap((x) => normalizeMedia(x.media));
+      }
       mustAffect(await supabase.from('games').delete().eq('id', g.id).select('id'));
+      if (imgs.length) void removeCardImages(imgs);
       toast.success('Oyun silindi.');
       reload(true);
     } catch (e) { toast.error(e); }
@@ -107,6 +118,8 @@ export default function Games() {
                         {perms.content && (
                           <RowMenu items={[
                             { label: 'Düzenle', icon: 'edit', onClick: () => setEdit(g) },
+                            { label: 'Kategoriler', icon: 'category', onClick: () => navigate(`/kategoriler?oyun=${g.id}`), hidden: g.engine === 'story' || g.engine === 'quiz' },
+                            { label: g.engine === 'challenges' ? 'Görevleri gör' : g.engine === 'quiz' ? 'Testleri gör' : g.engine === 'story' ? 'Hikâyeler' : 'Soruları gör', icon: 'list', onClick: () => { const p = contentPath(g); if (p) navigate(p); }, hidden: !contentPath(g) },
                             { label: g.is_active ? 'Yayından kaldır' : 'Yayına al', icon: g.is_active ? 'visibility_off' : 'visibility', onClick: () => toggle(g, 'is_active') },
                             { label: g.is_premium ? 'Ücretsiz yap' : 'Premium yap', icon: 'workspace_premium', onClick: () => toggle(g, 'is_premium') },
                             'sep',
@@ -178,6 +191,8 @@ function GameModal({ game, existing, onClose, onSaved }: { game: Omit<Game, 'id'
           </select>
         </Field>
         {isNew && f.engine === 'quiz' && <div className="full"><InfoNote>Test motorlu oyunlarda her kategori bir testtir. Testleri ve sorularını <b>Testler</b> bölümünden yönetebilirsiniz.</InfoNote></div>}
+        {isNew && f.engine === 'emoji' && <div className="full"><InfoNote>Emoji motoru: her soruda 2–6 emoji şık bulunur; isteğe bağlı doğru cevap (A–F) seçilir, seçilmezse eşleşme modunda oynanır. Kategorileri <b>Kategoriler</b>, soruları <b>Sorular</b> bölümünden (motor filtresi: Emoji) yönetin.</InfoNote></div>}
+        {isNew && f.engine === 'cards' && <div className="full"><InfoNote>Kart Seç motoru: her soruda 2–6 resimli kart bulunur, doğru cevap yoktur (partnerler aynı kartı seçmeye çalışır). Kart görsellerini soru düzenleyicisinden yükleyin (en fazla 5 MB).</InfoNote></div>}
         <Field label="Açıklama" className="full"><textarea className="textarea" value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} style={{ minHeight: 72 }} /></Field>
         <Field label="Süre etiketi" hint="Ör. 10–15 dk"><input className="input" value={f.duration_label} onChange={(e) => set('duration_label', e.target.value)} maxLength={30} /></Field>
         <Field label="Tur sayısı" hint="1–50"><input className="input" type="number" min={1} max={50} value={f.rounds} onChange={(e) => set('rounds', Number(e.target.value))} /></Field>

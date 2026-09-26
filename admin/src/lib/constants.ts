@@ -1,7 +1,7 @@
 export type Role = 'owner' | 'moderator' | 'content' | 'support';
 export type Engine =
   | 'truth_dare' | 'would_you_rather' | 'know_me' | 'challenges'
-  | 'secret_questions' | 'this_or_that' | 'story' | 'chat_game' | 'quiz';
+  | 'secret_questions' | 'this_or_that' | 'story' | 'chat_game' | 'quiz' | 'emoji' | 'cards';
 export type Tone = 'ok' | 'warn' | 'bad' | 'pro' | 'rose' | 'mute';
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -12,7 +12,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 export const ROLE_TONE: Record<Role, Tone> = { owner: 'rose', moderator: 'pro', content: 'pro', support: 'mute' };
 
-export const ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'challenges', 'secret_questions', 'this_or_that', 'story', 'chat_game', 'quiz'];
+export const ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'challenges', 'secret_questions', 'this_or_that', 'story', 'chat_game', 'quiz', 'emoji', 'cards'];
 export const ENGINE_LABEL: Record<Engine, string> = {
   truth_dare: 'Doğruluk mu Cesaret mi',
   would_you_rather: 'Hangisini Tercih Edersin',
@@ -23,6 +23,8 @@ export const ENGINE_LABEL: Record<Engine, string> = {
   story: 'Çift Hikâyesi',
   chat_game: 'Sohbet Oyunu',
   quiz: 'Test (4 seçenek)',
+  emoji: 'Emoji (emoji şıklar)',
+  cards: 'Kart Seç (resimli kartlar)',
 };
 export const ENGINE_SHORT: Record<Engine, string> = {
   truth_dare: 'DOĞRULUK / CESARET',
@@ -34,20 +36,34 @@ export const ENGINE_SHORT: Record<Engine, string> = {
   story: 'HİKÂYE',
   chat_game: 'SOHBET OYUNU',
   quiz: 'TEST',
+  emoji: 'EMOJİ',
+  cards: 'KART SEÇ',
 };
 /** Sorular bölümünde yönetilen motorlar (görev ve hikâye hariç). Testler ayrıca kendi bölümünde de yönetilir. */
-export const QUESTION_ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'chat_game', 'quiz'];
+export const QUESTION_ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'chat_game', 'quiz', 'emoji', 'cards'];
 
 export function optionCount(engine: Engine | undefined | null): number {
   if (engine === 'would_you_rather' || engine === 'this_or_that') return 2;
   if (engine === 'know_me' || engine === 'quiz') return 4;
+  if (engine === 'emoji' || engine === 'cards') return 4; // varsayılan; 2–6 arası değişebilir
   return 0;
 }
 
+/** Seçenek sayısı 2–6 arasında değişebilen motorlar (emoji, kartlar). */
+export const isFlexOptions = (engine: Engine | undefined | null) => engine === 'emoji' || engine === 'cards';
+export const FLEX_MIN = 2;
+export const FLEX_MAX = 6;
+/** Doğru cevap seçilebilen motorlar. */
+export const hasCorrect = (engine: Engine | undefined | null) => engine === 'quiz' || engine === 'emoji';
+/** Emoji şıkkı azami uzunluğu (UTF-16 birimi; birleşik emojiler uzun olabilir). */
+export const EMOJI_OPTION_MAX = 40;
+/** Kart başlığı azami uzunluğu. */
+export const CARD_TITLE_MAX = 60;
+
 /** Test (quiz) seçenekleri için azami uzunluk. */
 export const QUIZ_OPTION_MAX = 80;
-/** 0–3 → A–D; null → '' */
-export const optLetter = (i: number | null | undefined) => (i == null || i < 0 || i > 3 ? '' : String.fromCharCode(65 + i));
+/** 0–5 → A–F; null → '' */
+export const optLetter = (i: number | null | undefined) => (i == null || i < 0 || i > 5 ? '' : String.fromCharCode(65 + i));
 /** Test türü özeti: tüm sorular doğru cevaplıysa bilgi, hiçbiri değilse uyum, aksi halde karışık. */
 export function quizTypeOf(total: number, withCorrect: number): { t: string; tone: Tone } {
   if (!total) return { t: 'SORU YOK', tone: 'mute' };

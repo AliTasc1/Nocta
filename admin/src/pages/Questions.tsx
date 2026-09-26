@@ -4,9 +4,12 @@ import { supabase } from '../lib/supabase';
 import { chunk, downloadText, fetchAll, likeEscape, mustAffect, parseCsv, toCsv, unwrap, useDebounced, useLoad } from '../lib/data';
 import { AppError } from '../lib/errors';
 import {
-  ENGINE_LABEL, ENGINE_SHORT, LEVELS, MOODS, QUESTION_ENGINES, QUIZ_OPTION_MAX, levelLabel, levelTone, moodLabel, optLetter, optionCount,
+  CARD_TITLE_MAX, EMOJI_OPTION_MAX, ENGINE_LABEL, ENGINE_SHORT, FLEX_MAX, FLEX_MIN, LEVELS, MOODS, QUESTION_ENGINES, QUIZ_OPTION_MAX,
+  hasCorrect, isFlexOptions, levelLabel, levelTone, moodLabel, optLetter, optionCount,
   type Engine,
 } from '../lib/constants';
+import { alignMedia, normalizeMedia, removeCardImages } from '../lib/cardImages';
+import { CardThumbs, CardsEditor, CardsPreview, EmojiOptionsEditor, EmojiPreview, EmojiRowOptions } from './QuestionExtras';
 import { num, pct } from '../lib/format';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -19,16 +22,16 @@ type GameLite = { id: string; name: string; engine: Engine; sort: number };
 type CatLite = { id: string; name: string; game_id: string; sort: number; is_active: boolean };
 type Q = {
   id: string; category_id: string; text: string; kind: 'truth' | 'dare' | null; level: number; mood: string;
-  options: string[]; correct_index: number | null; timer_seconds: number | null; is_active: boolean; created_at: string;
+  options: string[]; media: string[]; correct_index: number | null; timer_seconds: number | null; is_active: boolean; created_at: string;
   category: { id: string; name: string; game_id: string; game: { id: string; name: string; engine: Engine } };
 };
 type Draft = {
   id?: string; game_id: string; category_id: string; text: string; kind: 'truth' | 'dare'; level: number; mood: string;
-  options: string[]; correct_index: number | null; timer_on: boolean; timer_seconds: number; is_active: boolean;
+  options: string[]; media: string[]; correct_index: number | null; timer_on: boolean; timer_seconds: number; is_active: boolean;
 };
 
 const PAGE = 25;
-const SELECT = 'id,category_id,text,kind,level,mood,options,correct_index,timer_seconds,is_active,created_at,category:categories!inner(id,name,game_id,game:games!inner(id,name,engine))';
+const SELECT = 'id,category_id,text,kind,level,mood,options,media,correct_index,timer_seconds,is_active,created_at,category:categories!inner(id,name,game_id,game:games!inner(id,name,engine))';
 
 const KIND_LABEL = { truth: 'Doğruluk', dare: 'Cesaret' } as const;
 
@@ -40,6 +43,7 @@ function previewKind(engine: Engine | undefined, d: Pick<Draft, 'kind' | 'timer_
   if (!engine) return 'SORU';
   if (engine === 'truth_dare') return d.kind === 'dare' ? 'CESARET' : 'DOĞRULUK';
   if (engine === 'quiz') return d.correct_index != null ? 'TEST · BİLGİ' : 'TEST · UYUM';
+  if (engine === 'emoji') return d.correct_index != null ? 'EMOJİ · DOĞRU CEVAPLI' : 'EMOJİ · EŞLEŞME';
   if (engine === 'challenges') return d.timer_on ? `GÖREV · ${num(d.timer_seconds)} sn` : 'GÖREV';
   return ENGINE_SHORT[engine];
 }
@@ -71,7 +75,7 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
   const editorRef = useRef<HTMLDivElement>(null);
 
   const [engineF, setEngineF] = useState<Engine | ''>('');
-  const [gameF, setGameF] = useState('');
+  const [gameF, setGameF] = useState(locked ? '' : params.get('oyun') ?? '');
   const [catF, setCatF] = useState(fixedCategory ?? params.get('kategori') ?? '');
   const [levelF, setLevelF] = useState<string>('');
   const [moodF, setMoodF] = useState('');
@@ -99,16 +103,17 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
   const gameOptions = (games.data ?? []).filter((g) => !engineF || g.engine === engineF);
   const catOptions = (cats.data ?? []).filter((c) => (!gameF || c.game_id === gameF) && (!engineF || gmap[c.game_id]?.engine === engineF));
 
-  // Bağlantıdan gelen kategori → oyunu da seç
+  // Bağlantıdan gelen kategori → oyunu da seç; ?oyun= bağlantısı → oyun filtresi
   useEffect(() => {
     const k = fixedCategory ?? params.get('kategori');
     if (k && cats.data) {
       const c = cats.data.find((x) => x.id === k);
       if (c) { setCatF(c.id); setGameF(c.game_id); }
-    }
-  }, [params, cats.data, fixedCategory]);
+    } else if (!locked && params.get('oyun')) { setGameF(params.get('oyun')!); setCatF(''); }
+  }, [params, cats.data, fixedCategory, locked]);
+  const clearLink = () => { if (params.get('kategori') || params.get('oyun')) setParams({}, { replace: true }); };
   useEffect(() => { setPage(0); setSel(new Set()); }, [engineF, gameF, catF, levelF, moodF, activeF, q, mode]);
-  useEffect(() => { setEngineF(''); setGameF(''); setCatF(fixedCategory ?? params.get('kategori') ?? ''); setDraft(null); /* mod değişti */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setEngineF(''); setGameF(locked ? '' : params.get('oyun') ?? ''); setCatF(fixedCategory ?? params.get('kategori') ?? ''); setDraft(null); /* mod değişti */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, fixedCategory]);
 
   const build = (select: string, withCount: boolean) => {
@@ -126,7 +131,7 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
   const list = useLoad(async () => {
     const res = await build(SELECT, true).order('created_at', { ascending: false }).range(page * PAGE, page * PAGE + PAGE - 1);
     if (res.error) throw res.error;
-    const rows = ((res.data ?? []) as unknown as Q[]).map((r) => ({ ...r, options: normalizeOptions(r.options) }));
+    const rows = ((res.data ?? []) as unknown as Q[]).map((r) => ({ ...r, options: normalizeOptions(r.options), media: normalizeMedia(r.media) }));
     const ids = rows.map((r) => r.id);
     const usage: Record<string, number> = {};
     const compl: Record<string, { done: number; all: number }> = {};
@@ -153,17 +158,21 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
     const gid = cat?.game_id || gameF || gameOptions[0]?.id || games.data?.[0]?.id || '';
     const firstCat = cat?.id || (cats.data ?? []).find((c) => c.game_id === gid)?.id || '';
     const eng = gmap[gid]?.engine;
-    setDraft({ game_id: gid, category_id: firstCat, text: '', kind: 'truth', level: 1, mood: 'karisik', options: Array(optionCount(eng)).fill(''), correct_index: null, timer_on: chal, timer_seconds: 60, is_active: true });
+    const n = optionCount(eng);
+    setDraft({ game_id: gid, category_id: firstCat, text: '', kind: 'truth', level: 1, mood: 'karisik', options: Array(n).fill(''), media: eng === 'cards' ? Array(n).fill('') : [], correct_index: null, timer_on: chal, timer_seconds: 60, is_active: true });
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
   const openEdit = (r: Q) => {
     const eng = r.category.game.engine;
-    const n = optionCount(eng);
+    const flex = isFlexOptions(eng);
+    const n = flex ? Math.min(FLEX_MAX, Math.max(FLEX_MIN, r.options.length)) : optionCount(eng);
     const opts = [...r.options];
     while (opts.length < n) opts.push('');
+    const options = n ? opts.slice(0, n) : opts;
+    const ci = hasCorrect(eng) && r.correct_index != null && r.correct_index < options.length ? r.correct_index : null;
     setDraft({
       id: r.id, game_id: r.category.game_id, category_id: r.category_id, text: r.text, kind: r.kind ?? 'truth', level: r.level, mood: r.mood,
-      options: n ? opts.slice(0, n) : opts, correct_index: eng === 'quiz' ? r.correct_index ?? null : null, timer_on: r.timer_seconds != null, timer_seconds: r.timer_seconds ?? 60, is_active: r.is_active,
+      options, media: eng === 'cards' ? alignMedia(r.media, options.length) : [], correct_index: ci, timer_on: r.timer_seconds != null, timer_seconds: r.timer_seconds ?? 60, is_active: r.is_active,
     });
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
@@ -176,10 +185,19 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
       if (!ok) return;
     }
     try {
+      // Kart görselleri: silinecek soruların görsel adresleri (silme başarılı olursa depodan da kaldırılır)
+      const imgs: string[] = [];
+      if (action === 'delete') {
+        for (const part of chunk(ids, 200)) {
+          const m = await supabase.from('questions').select('id,media').in('id', part);
+          (m.data as { media: unknown }[] | null)?.forEach((x) => imgs.push(...normalizeMedia(x.media)));
+        }
+      }
       for (const part of chunk(ids, 200)) {
         if (action === 'delete') mustAffect(await supabase.from('questions').delete().in('id', part).select('id'));
         else mustAffect(await supabase.from('questions').update({ is_active: action === 'on' }).in('id', part).select('id'));
       }
+      if (imgs.length) void removeCardImages(imgs);
       toast.success(action === 'delete' ? `${num(ids.length)} ${unit} silindi.` : action === 'on' ? `${num(ids.length)} ${unit} aktifleştirildi.` : `${num(ids.length)} ${unit} pasife alındı.`);
       setSel(new Set());
       changed();
@@ -198,6 +216,7 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
     if (!ok) return;
     try {
       mustAffect(await supabase.from('questions').delete().eq('id', r.id).select('id'));
+      if (r.media.some(Boolean)) void removeCardImages(r.media);
       toast.success('Silindi.');
       if (draft?.id === r.id) setDraft(null);
       changed();
@@ -215,14 +234,16 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
       }
       const header = quizMode
         ? ['id', 'oyun', 'test', 'metin', 'seviye', 'ruh_hali', 'secenekler', 'a', 'b', 'c', 'd', 'dogru', 'aktif', 'kullanim']
-        : ['id', 'oyun', 'kategori', 'metin', 'tur', 'seviye', 'ruh_hali', 'secenekler', 'dogru', 'sure_sn', 'aktif', 'kullanim'];
+        : ['id', 'oyun', 'kategori', 'motor', 'metin', 'tur', 'seviye', 'ruh_hali', 'secenekler', 'gorseller', 'dogru', 'sure_sn', 'aktif', 'kullanim'];
       const lines = all.map((r) => {
         const opts = normalizeOptions(r.options);
-        const correct = r.category.game.engine === 'quiz' ? optLetter(r.correct_index) : '';
+        const eng = r.category.game.engine;
+        const correct = hasCorrect(eng) ? optLetter(r.correct_index) : '';
+        const media = eng === 'cards' ? alignMedia(normalizeMedia(r.media), opts.length).join(' | ') : '';
         return quizMode
           ? [r.id, r.category.game.name, r.category.name, r.text, r.level, r.mood, opts.join(' | '), opts[0] ?? '', opts[1] ?? '', opts[2] ?? '', opts[3] ?? '', correct, r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0]
-          : [r.id, r.category.game.name, r.category.name, r.text, r.kind ? KIND_LABEL[r.kind] : '', r.level, r.mood,
-            opts.join(' | '), correct, r.timer_seconds ?? '', r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0];
+          : [r.id, r.category.game.name, r.category.name, eng, r.text, r.kind ? KIND_LABEL[r.kind] : '', r.level, r.mood,
+            opts.join(' | '), media, correct, r.timer_seconds ?? '', r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0];
       });
       downloadText(`nocta-${chal ? 'gorevler' : quizMode ? 'testler' : 'sorular'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv([header, ...lines]));
       toast.success(`${num(all.length)} ${unit} dışa aktarıldı.`);
@@ -250,18 +271,18 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
         <div className="tbl-head">
           <div className="row wrap" style={{ gap: 8 }}>
             {mode === 'questions' && (
-              <select className="select sm auto" value={engineF} onChange={(e) => { setEngineF(e.target.value as Engine | ''); setGameF(''); setCatF(''); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Oyun motoru">
+              <select className="select sm auto" value={engineF} onChange={(e) => { setEngineF(e.target.value as Engine | ''); setGameF(''); setCatF(''); clearLink(); }} aria-label="Oyun motoru">
                 <option value="">Tüm motorlar</option>
                 {QUESTION_ENGINES.map((en) => <option key={en} value={en}>{ENGINE_LABEL[en]}</option>)}
               </select>
             )}
             {!locked && (
               <>
-                <select className="select sm auto" value={gameF} onChange={(e) => { setGameF(e.target.value); setCatF(''); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Oyun">
+                <select className="select sm auto" value={gameF} onChange={(e) => { setGameF(e.target.value); setCatF(''); clearLink(); }} aria-label="Oyun">
                   <option value="">Tüm oyunlar</option>
                   {gameOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
-                <select className="select sm auto" value={catF} onChange={(e) => { setCatF(e.target.value); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label={quizMode ? 'Test' : 'Kategori'}>
+                <select className="select sm auto" value={catF} onChange={(e) => { setCatF(e.target.value); clearLink(); }} aria-label={quizMode ? 'Test' : 'Kategori'}>
                   <option value="">{quizMode ? 'Tüm testler' : 'Tüm kategoriler'}</option>
                   {catOptions.map((c) => <option key={c.id} value={c.id}>{c.name}{!gameF && gmap[c.game_id] ? ` · ${gmap[c.game_id].name}` : ''}</option>)}
                 </select>
@@ -331,6 +352,18 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
                               : <Badge tone="rose" title="Uyum testi: partnerler aynı şıkkı seçmeye çalışır">UYUM</Badge>}
                             <QuizOptions options={r.options} correct={r.correct_index} />
                           </div>
+                        ) : r.category.game.engine === 'emoji' ? (
+                          <div className="row wrap" style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+                            {r.correct_index != null
+                              ? <Badge tone="ok" title="Doğru cevaplı: doğru emojiyi bulan kazanır">DOĞRU: {optLetter(r.correct_index)}</Badge>
+                              : <Badge tone="rose" title="Eşleşme modu: partnerler aynı şıkkı seçmeye çalışır">EŞLEŞME</Badge>}
+                            <EmojiRowOptions options={r.options} correct={r.correct_index} />
+                          </div>
+                        ) : r.category.game.engine === 'cards' ? (
+                          <div className="row wrap" style={{ gap: 8, marginTop: 6, alignItems: 'center' }}>
+                            <Badge tone="pro" title={`${num(r.media.filter(Boolean).length)} kartın görseli var`}>{num(r.options.length)} KART</Badge>
+                            <CardThumbs options={r.options} media={r.media} />
+                          </div>
                         ) : (
                           <div className="row wrap" style={{ gap: 6, marginTop: 4 }}>
                             {r.kind && <span className="tag">{KIND_LABEL[r.kind].toLocaleUpperCase('tr-TR')}</span>}
@@ -338,7 +371,7 @@ export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mo
                           </div>
                         )}
                       </td>
-                      <td className="m">{r.category.name}<div className="tag">{r.category.game.name}{mode === 'questions' && r.category.game.engine === 'quiz' ? ' · TEST' : ''}</div></td>
+                      <td className="m">{r.category.name}<div className="tag">{r.category.game.name}{mode === 'questions' && ['quiz', 'emoji', 'cards'].includes(r.category.game.engine) ? ` · ${ENGINE_SHORT[r.category.game.engine]}` : ''}</div></td>
                       <td><Badge tone={levelTone(r.level)}>{levelLabel(r.level).toLocaleUpperCase('tr-TR')}</Badge></td>
                       {chal ? <td className="m nowrap">{r.timer_seconds ? `${num(r.timer_seconds)} sn` : '—'}</td> : <td className="m">{moodLabel(r.mood)}</td>}
                       <td className="num">{num(list.data?.usage[r.id] ?? 0)}</td>
@@ -383,6 +416,24 @@ function validateDraft(d: Draft, engine: Engine | undefined): string | null {
     const low = d.options.map((o) => o.trim().toLocaleLowerCase('tr-TR'));
     if (new Set(low).size !== low.length) return 'Seçenekler birbirinden farklı olmalı.';
     if (d.correct_index != null && !(d.correct_index >= 0 && d.correct_index <= 3)) return 'Doğru cevap A, B, C ya da D olmalı.';
+  } else if (engine === 'emoji' || engine === 'cards') {
+    const isEmoji = engine === 'emoji';
+    const noun = isEmoji ? 'şık' : 'kart';
+    if (d.options.length < FLEX_MIN || d.options.length > FLEX_MAX) return `${FLEX_MIN}–${FLEX_MAX} ${noun} girilmeli.`;
+    const max = isEmoji ? EMOJI_OPTION_MAX : CARD_TITLE_MAX;
+    for (let i = 0; i < d.options.length; i++) {
+      const o = d.options[i].trim();
+      const name = isEmoji ? `${optLetter(i)} şıkkı` : `${i + 1}. kartın başlığı`;
+      if (!o) return `${name} boş bırakılamaz.`;
+      if (o.length > max) return `${name} en fazla ${max} karakter olabilir.`;
+    }
+    const low = d.options.map((o) => o.trim().toLocaleLowerCase('tr-TR'));
+    if (new Set(low).size !== low.length) return isEmoji ? 'Şıklar birbirinden farklı olmalı.' : 'Kart başlıkları birbirinden farklı olmalı.';
+    if (isEmoji && d.correct_index != null && !(d.correct_index >= 0 && d.correct_index < d.options.length)) return 'Doğru cevap mevcut şıklardan biri olmalı.';
+    if (!isEmoji) {
+      const bad = d.media.findIndex((m) => m.trim() && !/^https?:\/\/\S+$/i.test(m.trim()));
+      if (bad >= 0) return `${bad + 1}. kartın görsel adresi geçerli değil (https:// ile başlamalı).`;
+    }
   } else if (n && d.options.filter((o) => o.trim()).length !== n) return `Bu oyun için tam olarak ${n} seçenek girilmeli.`;
   if (d.timer_on && !(d.timer_seconds >= 5 && d.timer_seconds <= 3600)) return 'Süre 5 ile 3600 saniye arasında olmalı.';
   return null;
@@ -395,22 +446,41 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
   const [d, setD] = useState<Draft>(draft);
   const [busy, setBusy] = useState<'' | 'draft' | 'pub' | 'next'>('');
   const [err, setErr] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const toast = useToast();
   const engine = games.find((g) => g.id === d.game_id)?.engine;
+  // Kart görselleri: kayıtlı hâldeki adresler ve bu oturumda yüklenip henüz kaydedilmemiş olanlar
+  const savedMedia = useRef<string[]>(draft.media);
+  const sessionUploads = useRef<Set<string>>(new Set());
+  useEffect(() => () => { // kapatılırsa / başka soruya geçilirse kaydedilmemiş yüklemeleri temizle
+    if (sessionUploads.current.size) void removeCardImages([...sessionUploads.current]);
+  }, []);
+  const discardImage = (url: string) => {
+    if (sessionUploads.current.has(url)) { sessionUploads.current.delete(url); void removeCardImages([url]); }
+  };
   const nOpt = optionCount(engine);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
   const catName = cats.find((c) => c.id === d.category_id)?.name;
 
   const changeGame = (gid: string) => {
     const eng = games.find((g) => g.id === gid)?.engine;
-    const n = optionCount(eng);
-    setD((x) => ({ ...x, game_id: gid, category_id: cats.find((c) => c.game_id === gid)?.id ?? '', options: n ? [...x.options, '', '', '', ''].slice(0, n) : [], correct_index: eng === 'quiz' ? x.correct_index : null }));
+    setD((x) => {
+      const n = isFlexOptions(eng) ? Math.min(FLEX_MAX, Math.max(FLEX_MIN, x.options.length || optionCount(eng))) : optionCount(eng);
+      const options = n ? [...x.options, ...Array(n).fill('')].slice(0, n) : [];
+      return {
+        ...x, game_id: gid, category_id: cats.find((c) => c.game_id === gid)?.id ?? '', options,
+        media: eng === 'cards' ? alignMedia(x.media, options.length) : [],
+        correct_index: hasCorrect(eng) && x.correct_index != null && x.correct_index < Math.min(options.length, eng === 'quiz' ? 4 : FLEX_MAX) ? x.correct_index : null,
+      };
+    });
   };
 
   const save = async (active: boolean, next = false) => {
+    if (uploading) { setErr('Görsel yüklemesi bitene kadar bekleyin.'); return; }
     const e = validateDraft(d, engine);
     setErr(e);
     if (e) return;
+    const media = engine === 'cards' ? alignMedia(d.media.map((m) => m.trim()), d.options.length) : [];
     setBusy(next ? 'next' : active ? 'pub' : 'draft');
     const payload = {
       category_id: d.category_id,
@@ -419,16 +489,22 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
       level: d.level,
       mood: d.mood,
       options: nOpt ? d.options.map((o) => o.trim()) : [],
-      correct_index: engine === 'quiz' ? d.correct_index : null,
+      media,
+      correct_index: hasCorrect(engine) ? d.correct_index : null,
       timer_seconds: chal && d.timer_on ? Math.round(d.timer_seconds) : null,
       is_active: active,
     };
     try {
       if (d.id) mustAffect(await supabase.from('questions').update(payload).eq('id', d.id).select('id'));
       else unwrap(await supabase.from('questions').insert(payload).select('id').single());
+      // Kaydedildi: bu oturumdaki yüklemeler artık kalıcı; kayıttan çıkarılan eski görseller depodan silinir
+      const removed = savedMedia.current.filter((u) => u && !media.includes(u));
+      if (removed.length) void removeCardImages(removed);
+      sessionUploads.current.clear();
+      savedMedia.current = next ? [] : media;
       toast.success(d.id ? 'Değişiklikler kaydedildi.' : active ? 'Yayınlandı.' : 'Taslak olarak kaydedildi.');
       if (next) {
-        setD((x) => ({ ...x, id: undefined, text: '', options: x.options.map(() => ''), correct_index: null }));
+        setD((x) => ({ ...x, id: undefined, text: '', options: x.options.map(() => ''), media: x.media.map(() => ''), correct_index: null }));
         onSaved(true);
       } else onSaved(false);
     } catch (x) { toast.error(x); } finally { setBusy(''); }
@@ -488,7 +564,15 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
             </Field>
           </>
         )}
-        {nOpt > 0 && engine !== 'quiz' && (
+        {engine === 'emoji' && (
+          <EmojiOptionsEditor options={d.options} correct={d.correct_index} onChange={(options, correct_index) => setD((x) => ({ ...x, options, correct_index }))} />
+        )}
+        {engine === 'cards' && (
+          <CardsEditor cards={{ options: d.options, media: alignMedia(d.media, d.options.length) }} gameId={d.game_id} questionId={d.id}
+            update={(fn) => setD((x) => { const c = fn({ options: x.options, media: alignMedia(x.media, x.options.length) }); return { ...x, options: c.options, media: c.media }; })}
+            onUploaded={(url) => sessionUploads.current.add(url)} onDiscard={discardImage} onBusy={setUploading} />
+        )}
+        {nOpt > 0 && !['quiz', 'emoji', 'cards'].includes(engine ?? '') && (
           <div className="col" style={{ gap: 8 }}>
             <span className="small muted" style={{ fontWeight: 600 }}>Seçenekler · tam {nOpt} adet{engine === 'know_me' ? ' (partner hakkında tahmin seçenekleri)' : ''}</span>
             {d.options.map((o, i) => (
@@ -514,11 +598,11 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
         )}
         {err && <InfoNote tone="bad">{err}</InfoNote>}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <Btn size="lg" loading={busy === 'draft'} disabled={!!busy} onClick={() => save(false)}>Taslak</Btn>
-          <Btn size="lg" variant="primary" loading={busy === 'pub'} disabled={!!busy} onClick={() => save(true)}>{d.id && draft.is_active ? 'Kaydet' : 'Yayınla'}</Btn>
+          <Btn size="lg" loading={busy === 'draft'} disabled={!!busy || uploading} onClick={() => save(false)}>Taslak</Btn>
+          <Btn size="lg" variant="primary" loading={busy === 'pub'} disabled={!!busy || uploading} onClick={() => save(true)}>{d.id && draft.is_active ? 'Kaydet' : 'Yayınla'}</Btn>
         </div>
         <div className="row wrap" style={{ justifyContent: 'space-between' }}>
-          {!d.id ? <button type="button" className="link-btn small" disabled={!!busy} onClick={() => save(true, true)}>{busy === 'next' ? 'Kaydediliyor…' : 'Yayınla ve yenisini ekle →'}</button> : <span className="small muted2">Taslak = pasif olarak kaydeder</span>}
+          {!d.id ? <button type="button" className="link-btn small" disabled={!!busy || uploading} onClick={() => save(true, true)}>{busy === 'next' ? 'Kaydediliyor…' : 'Yayınla ve yenisini ekle →'}</button> : <span className="small muted2">Taslak = pasif olarak kaydeder</span>}
           {onDelete && <Btn size="sm" variant="danger" icon="delete" onClick={onDelete}>Sil</Btn>}
         </div>
       </div>
@@ -531,7 +615,9 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
             <span className="lv">{levelLabel(d.level).toLocaleUpperCase('tr-TR')}</span>
           </div>
           <span className={`q ${d.text.trim() ? '' : 'ph'}`}>{d.text.trim() || (chal ? 'Görev metni burada görünecek.' : 'Soru metni burada görünecek.')}</span>
-          {nOpt > 0 && (
+          {engine === 'emoji' && <EmojiPreview options={d.options} correct={d.correct_index} />}
+          {engine === 'cards' && <CardsPreview options={d.options} media={alignMedia(d.media, d.options.length)} />}
+          {nOpt > 0 && engine !== 'emoji' && engine !== 'cards' && (
             <div className="col" style={{ gap: 8 }}>
               {engine === 'quiz'
                 ? d.options.map((o, i) => (
@@ -549,6 +635,8 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
           </div>
         </div>
         {engine === 'quiz' && <span className="small muted" style={{ lineHeight: 1.5 }}>{d.correct_index == null ? 'Uyum testi: iki partner aynı şıkkı seçerse eşleşme sayılır.' : `Bilgi testi: doğru cevap ${optLetter(d.correct_index)}. Oyun sonunda doğru sayıları gösterilir.`}</span>}
+        {engine === 'emoji' && <span className="small muted" style={{ lineHeight: 1.5 }}>{d.correct_index == null ? 'Eşleşme modu: iki partner aynı emojiyi seçerse eşleşme sayılır.' : `Doğru cevap ${optLetter(d.correct_index)}: ikiniz de kendi ekranınızdan seçersiniz; doğruysa kutlama gösterilir.`}</span>}
+        {engine === 'cards' && <span className="small muted" style={{ lineHeight: 1.5 }}>Kart Seç: doğru cevap yoktur. İki partner aynı kartı seçerse eşleşme sayılır.</span>}
         <span className="small muted" style={{ lineHeight: 1.5 }}>İçerik kuralları: rıza odaklı, açık cinsel betimleme yok, her kart atlanabilir.</span>
         {engine && <span className="tag">Motor: {ENGINE_LABEL[engine]}</span>}
       </div>
@@ -557,7 +645,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
 }
 
 // ── Toplu içe aktarma ──────────────────────────────────────────
-type ParsedItem = { text: string; kind: 'truth' | 'dare' | null; level: number; mood: string; options: string[]; correct_index: number | null; timer_seconds: number | null };
+type ParsedItem = { text: string; kind: 'truth' | 'dare' | null; level: number; mood: string; options: string[]; media: string[]; correct_index: number | null; timer_seconds: number | null };
 const LEVEL_WORDS: Record<string, number> = { yumusak: 0, 'yumuşak': 0, soft: 0, flortoz: 1, 'flörtöz': 1, flirty: 1, cesur: 2, bold: 2, vahsi: 3, 'vahşi': 3, wild: 3 };
 const parseLevel = (v: unknown, def: number) => {
   if (v == null || v === '') return def;
@@ -572,16 +660,19 @@ const parseKind = (v: unknown, def: 'truth' | 'dare') => {
   if (['dare', 'cesaret', 'c'].includes(s)) return 'dare';
   return null;
 };
-/** Doğru cevap: boş / “-” / “yok” → null (uyum); A–D ya da 0–3 → indeks; aksi halde NaN. */
-const parseCorrect = (v: unknown): number | null => {
+/** Doğru cevap: boş / “-” / “yok” → null (uyum/eşleşme); A–D (emoji: A–F) ya da 0–3 (0–5) → indeks; aksi halde NaN. */
+const parseCorrect = (v: unknown, max = 3): number | null => {
   if (v == null) return null;
-  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 && v <= 3 ? v : NaN;
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 && v <= max ? v : NaN;
   const s = String(v).trim().toLocaleUpperCase('tr-TR');
   if (s === '' || s === '-' || s === 'YOK') return null;
-  if (/^[A-D]$/.test(s)) return s.charCodeAt(0) - 65;
-  if (/^[0-3]$/.test(s)) return Number(s);
+  if (/^[A-Z]$/.test(s) && s.charCodeAt(0) - 65 <= max) return s.charCodeAt(0) - 65;
+  if (/^\d$/.test(s) && Number(s) <= max) return Number(s);
   return NaN;
 };
+/** Emoji satırında son alan doğru cevap mı? (tek harf A–F, boş, “-” ya da “yok”) */
+const looksLikeCorrect = (v: string) => /^([A-Fa-f]|-|yok|YOK|Yok)?$/.test(v.trim());
+const splitPipe = (v: unknown): string[] => (Array.isArray(v) ? v.map((o) => String(o ?? '').trim()) : typeof v === 'string' ? v.split('|').map((o) => o.trim()) : []);
 const parseMood = (v: unknown, def: string) => {
   if (v == null || v === '') return def;
   const s = String(v).trim().toLocaleLowerCase('tr-TR');
@@ -605,6 +696,9 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
   const engine = games.find((g) => g.id === cat?.game_id)?.engine;
   const nOpt = optionCount(engine);
   const isQuiz = engine === 'quiz';
+  const isEmoji = engine === 'emoji';
+  const isCards = engine === 'cards';
+  const flex = isFlexOptions(engine);
 
   const parsed = useMemo(() => {
     const items: ParsedItem[] = [];
@@ -617,15 +711,29 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
       let opts: string[] = [];
       if (Array.isArray(raw.options)) opts = raw.options.map((o) => String(o).trim()).filter(Boolean);
       else if (typeof raw.options === 'string' && raw.options.trim()) opts = raw.options.split('|').map((o) => o.trim()).filter(Boolean);
+      const media = isCards ? alignMedia(splitPipe(raw.media), opts.length) : [];
       const tmRaw = raw.timer_seconds ?? (chal && timer !== '' ? timer : null);
       const tm = tmRaw == null || tmRaw === '' ? null : Number(tmRaw);
-      const ci = isQuiz ? parseCorrect(raw.correct_index) : null;
+      const ci = isQuiz ? parseCorrect(raw.correct_index) : isEmoji ? parseCorrect(raw.correct_index, FLEX_MAX - 1) : null;
       const where = `${i}. satır`;
       if (t.length < 2 || t.length > 600) return errors.push(`${where}: metin 2–600 karakter olmalı.`);
       if (Number.isNaN(lv)) return errors.push(`${where}: seviye anlaşılamadı.`);
       if (md == null) return errors.push(`${where}: ruh hali anlaşılamadı.`);
       if (engine === 'truth_dare' && kd == null) return errors.push(`${where}: tür Doğruluk ya da Cesaret olmalı.`);
-      if (nOpt && opts.length !== nOpt) return errors.push(`${where}: tam ${nOpt} seçenek gerekli (${opts.length} bulundu).`);
+      if (flex) {
+        const noun = isEmoji ? 'şık' : 'kart';
+        if (opts.length < FLEX_MIN || opts.length > FLEX_MAX) return errors.push(`${where}: ${FLEX_MIN}–${FLEX_MAX} ${noun} gerekli (${opts.length} bulundu).`);
+        const max = isEmoji ? EMOJI_OPTION_MAX : CARD_TITLE_MAX;
+        const long = opts.findIndex((o) => o.length > max);
+        if (long >= 0) return errors.push(`${where}: ${long + 1}. ${noun} en fazla ${max} karakter olabilir.`);
+        if (new Set(opts.map((o) => o.toLocaleLowerCase('tr-TR'))).size !== opts.length) return errors.push(`${where}: ${isEmoji ? 'şıklar' : 'kart başlıkları'} birbirinden farklı olmalı.`);
+        if (isEmoji && ci != null && (Number.isNaN(ci) || ci >= opts.length)) return errors.push(`${where}: doğru cevap mevcut şıklardan biri (A–${optLetter(opts.length - 1)}) ya da boş olmalı.`);
+        if (isCards) {
+          if (splitPipe(raw.media).filter(Boolean).length > opts.length) return errors.push(`${where}: görsel sayısı kart sayısından fazla.`);
+          const bad = media.findIndex((m) => m && !/^https?:\/\/\S+$/i.test(m));
+          if (bad >= 0) return errors.push(`${where}: ${bad + 1}. kartın görsel adresi geçerli değil.`);
+        }
+      } else if (nOpt && opts.length !== nOpt) return errors.push(`${where}: tam ${nOpt} seçenek gerekli (${opts.length} bulundu).`);
       if (isQuiz) {
         const long = opts.findIndex((o) => o.length > QUIZ_OPTION_MAX);
         if (long >= 0) return errors.push(`${where}: ${optLetter(long)} seçeneği en fazla ${QUIZ_OPTION_MAX} karakter olabilir.`);
@@ -633,7 +741,7 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
         if (ci != null && Number.isNaN(ci)) return errors.push(`${where}: doğru cevap A, B, C, D ya da boş olmalı.`);
       }
       if (tm != null && !(tm >= 5 && tm <= 3600)) return errors.push(`${where}: süre 5–3600 saniye olmalı.`);
-      items.push({ text: t, kind: kd, level: lv, mood: md, options: nOpt ? opts : [], correct_index: isQuiz ? ci : null, timer_seconds: chal ? tm : null });
+      items.push({ text: t, kind: kd, level: lv, mood: md, options: nOpt ? opts : [], media, correct_index: isQuiz || isEmoji ? ci : null, timer_seconds: chal ? tm : null });
     };
     try {
       if (fmt === 'lines') {
@@ -644,6 +752,14 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
             // Soru | A | B | C | D | doğru(A–D veya boş)
             if (parts.length > 6) { errors.push(`${idx + 1}. satır: en fazla 6 alan olabilir (soru, 4 seçenek, doğru cevap).`); return; }
             add(idx + 1, { text: parts[0], options: parts.slice(1, 5), correct_index: parts[5] ?? null });
+          } else if (isEmoji) {
+            // Soru | 😀 | 😍 | … | doğru(A–F veya boş) — son alan tek harf ya da boşsa doğru cevaptır
+            const rest = parts.slice(1);
+            const last = rest.length > FLEX_MIN && looksLikeCorrect(rest[rest.length - 1]) ? rest.pop()! : null;
+            add(idx + 1, { text: parts[0], options: rest.filter(Boolean), correct_index: last });
+          } else if (isCards) {
+            // Soru | Kart1 | Kart2 | … (görseller sonra eklenir)
+            add(idx + 1, { text: parts[0], options: parts.slice(1).filter(Boolean) });
           } else add(idx + 1, { text: parts[0], options: parts.slice(1) });
         });
       } else if (fmt === 'csv') {
@@ -657,13 +773,14 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
             options: idx(['options', 'secenekler', 'seçenekler']), timer: idx(['timer_seconds', 'sure_sn', 'süre', 'sure']),
             correct: idx(['correct_index', 'correct', 'dogru', 'doğru', 'dogru_cevap', 'doğru_cevap', 'doğru cevap']),
             a: idx(['a']), b: idx(['b']), c: idx(['c']), d: idx(['d']),
-          } : { text: 0, kind: -1, level: -1, mood: -1, options: 1, timer: -1, correct: isQuiz ? 2 : -1, a: -1, b: -1, c: -1, d: -1 };
+            media: idx(['media', 'gorseller', 'görseller', 'gorsel', 'görsel']),
+          } : { text: 0, kind: -1, level: -1, mood: -1, options: 1, timer: -1, correct: isQuiz || isEmoji ? 2 : -1, a: -1, b: -1, c: -1, d: -1, media: isCards ? 2 : -1 };
           rows.slice(hasHead ? 1 : 0).forEach((r, i) => {
             const g = (k: number) => (k >= 0 ? r[k] : undefined);
             // Testlerde ayrı a/b/c/d sütunları varsa onları kullan
             const abcd = [cols.a, cols.b, cols.c, cols.d];
             const options = cols.options < 0 && abcd.every((k) => k >= 0) ? abcd.map((k) => g(k) ?? '') : g(cols.options);
-            add(i + (hasHead ? 2 : 1), { text: g(cols.text), kind: g(cols.kind), level: g(cols.level), mood: g(cols.mood), options, correct_index: g(cols.correct), timer_seconds: g(cols.timer) || undefined });
+            add(i + (hasHead ? 2 : 1), { text: g(cols.text), kind: g(cols.kind), level: g(cols.level), mood: g(cols.mood), options, media: g(cols.media), correct_index: g(cols.correct), timer_seconds: g(cols.timer) || undefined });
           });
         }
       } else if (text.trim()) {
@@ -679,7 +796,7 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
       errors.unshift(e instanceof AppError ? e.message : 'JSON ayrıştırılamadı: biçimi kontrol edin.');
     }
     return { items, errors };
-  }, [text, fmt, level, mood, kind, timer, engine, nOpt, chal, isQuiz]);
+  }, [text, fmt, level, mood, kind, timer, engine, nOpt, chal, isQuiz, isEmoji, isCards, flex]);
 
   const run = async () => {
     if (!catId || !parsed.items.length) return;
@@ -698,7 +815,19 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
     } finally { setBusy(false); }
   };
 
-  const example = isQuiz
+  const example = isEmoji
+    ? fmt === 'lines'
+      ? 'Hangisi "romantik akşam yemeği"? | 🍕🎮 | 🕯️🍷 | 🍿📺 | 🏃‍♀️🥤 | B\nBu gece hangi ruh hâlindesin? | 😴 | 🥳 | 😍 | 🤪 |'
+      : fmt === 'csv'
+        ? 'metin,seviye,ruh_hali,secenekler,dogru\n"Hangi film: Titanic?",0,eglenceli,"🦁👑 | 🚢🧊💔 | 🕷️🧑 | 🦖🏝️",B'
+        : '[\n  { "text": "Hangisi ilk öpücük?", "options": ["💋✨", "🍔🍟", "🚗💨", "📚✏️"], "correct": "A" },\n  { "text": "Bu gece hangi emoji?", "options": ["😴", "🥳", "😍"], "correct": null }\n]'
+    : isCards
+      ? fmt === 'lines'
+        ? 'Hayalindeki randevu hangisi? | Piknik | Mum ışığında yemek | Konser | Sinema\nHangi hafta sonu kaçamağı? | Bağ evi | Kayak | Termal otel | Kamp'
+        : fmt === 'csv'
+          ? 'metin,seviye,ruh_hali,secenekler,gorseller\n"Hayalindeki randevu?",0,romantik,"Piknik | Konser | Sinema","https://…/piknik.jpg | | "'
+          : '[\n  { "text": "Hayalindeki randevu?", "options": ["Piknik", "Konser", "Sinema", "Dans"], "media": ["https://…/piknik.jpg", "", "", ""] }\n]'
+    : isQuiz
     ? fmt === 'lines'
       ? 'İdeal bir cumartesi gecesi hangisi? | Evde film | Şehirde yemek | Arkadaşlarla buluşma | Plansız yolculuk |\nSevgililer Günü hangi tarihte kutlanır? | 14 Şubat | 14 Mart | 1 Mayıs | 21 Haziran | A'
       : fmt === 'csv'
@@ -739,7 +868,9 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
           </Field>
         )}
       </div>
-      <Field label="İçerik" hint={isQuiz ? (fmt === 'lines' ? 'Her satıra bir soru: Soru | A | B | C | D | doğru (A–D; uyum testi için boş bırakın).' : fmt === 'csv' ? 'Başlıklar: metin, seviye, ruh_hali, secenekler (| ile 4 adet) ya da a, b, c, d sütunları, dogru (A–D veya boş).' : 'Nesne dizisi: text, options (4 metin), correct ("A"–"D", 0–3 ya da null), level, mood.') : fmt === 'lines' ? (nOpt ? `Her satıra bir kayıt; seçenekleri “|” ile ayırın (tam ${nOpt} seçenek).` : 'Her satıra bir kayıt yazın.') : fmt === 'csv' ? 'İlk satır başlık olabilir: metin, seviye, ruh_hali, tur, secenekler (| ile ayrılmış), sure_sn.' : 'Metin dizisi ya da nesne dizisi.'}>
+      <Field label="İçerik" hint={isEmoji ? (fmt === 'lines' ? 'Her satıra bir soru: Soru | 😀 | 😍 | 🙈 | 🔥 | doğru (2–6 emoji şık; doğru A–F, eşleşme modu için boş bırakın).' : fmt === 'csv' ? 'Başlıklar: metin, seviye, ruh_hali, secenekler (| ile 2–6 emoji), dogru (A–F veya boş).' : 'Nesne dizisi: text, options (2–6 emoji), correct ("A"–"F", 0–5 ya da null), level, mood.')
+        : isCards ? (fmt === 'lines' ? 'Her satıra bir soru: Soru | Kart1 | Kart2 | Kart3 | Kart4 (2–6 kart). Görselleri sonra soruyu düzenleyerek ekleyin.' : fmt === 'csv' ? 'Başlıklar: metin, seviye, ruh_hali, secenekler (| ile 2–6 kart başlığı), isteğe bağlı gorseller (| ile, kartlarla aynı sırada).' : 'Nesne dizisi: text, options (2–6 kart başlığı), isteğe bağlı media (görsel adresleri), level, mood.')
+        : isQuiz ? (fmt === 'lines' ? 'Her satıra bir soru: Soru | A | B | C | D | doğru (A–D; uyum testi için boş bırakın).' : fmt === 'csv' ? 'Başlıklar: metin, seviye, ruh_hali, secenekler (| ile 4 adet) ya da a, b, c, d sütunları, dogru (A–D veya boş).' : 'Nesne dizisi: text, options (4 metin), correct ("A"–"D", 0–3 ya da null), level, mood.') : fmt === 'lines' ? (nOpt ? `Her satıra bir kayıt; seçenekleri “|” ile ayırın (tam ${nOpt} seçenek).` : 'Her satıra bir kayıt yazın.') : fmt === 'csv' ? 'İlk satır başlık olabilir: metin, seviye, ruh_hali, tur, secenekler (| ile ayrılmış), sure_sn.' : 'Metin dizisi ya da nesne dizisi.'}>
         <textarea className="textarea mono" style={{ minHeight: 200, fontSize: 13 }} value={text} onChange={(e) => setText(e.target.value)} placeholder={example} spellCheck={false} />
       </Field>
       <div className="row wrap" style={{ justifyContent: 'space-between' }}>

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { mustAffect, unwrap, useLoad } from '../lib/data';
-import { ENGINE_LABEL, type Engine } from '../lib/constants';
+import { ENGINE_LABEL, QUESTION_ENGINES, type Engine } from '../lib/constants';
+import { normalizeMedia, removeCardImages } from '../lib/cardImages';
 import { num } from '../lib/format';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -61,7 +62,14 @@ export default function Categories() {
     });
     if (!ok) return;
     try {
+      // Kart Seç: kategoriyle birlikte silinecek soruların görselleri (silme sonrası depodan da kaldırılır)
+      let imgs: string[] = [];
+      if (gmap[c.game_id]?.engine === 'cards' && n > 0) {
+        const m = await supabase.from('questions').select('media').eq('category_id', c.id).limit(5000);
+        imgs = ((m.data ?? []) as { media: unknown }[]).flatMap((x) => normalizeMedia(x.media));
+      }
       mustAffect(await supabase.from('categories').delete().eq('id', c.id).select('id'));
+      if (imgs.length) void removeCardImages(imgs);
       toast.success('Kategori silindi.');
       reload(true);
     } catch (e) { toast.error(e); }
@@ -85,6 +93,9 @@ export default function Categories() {
               {(games.data ?? []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
             <span className="small muted">{num(rows.length)} kategori · {num(rows.reduce((s, c) => s + count(c), 0))} soru</span>
+            {gameFilter && gmap[gameFilter] && QUESTION_ENGINES.includes(gmap[gameFilter].engine) && (
+              <Link className="small" to={gmap[gameFilter].engine === 'quiz' ? `/testler?oyun=${gameFilter}` : `/sorular?oyun=${gameFilter}`}>Bu oyunun tüm soruları →</Link>
+            )}
           </div>
           {perms.content && <Btn variant="primary" icon="add" onClick={newCat} disabled={!contentGames.length}>Yeni kategori</Btn>}
         </div>
