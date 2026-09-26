@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { quizCorrectIndex } from '@/components/games/Quiz';
 import { finishCache, haptic, optionsOf, RadialGlow, upper, useCompact, useReducedMotion, type FinishResult } from '@/components/games/shared';
 import { Button, EmptyState, Icon, Loading } from '@/components/ui';
 import { errorText, supabase } from '@/lib/supabase';
@@ -16,7 +17,7 @@ import { colors, flirtLevel, fonts } from '@/theme';
 export default function ResultScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = String(id ?? '');
-  const { userId, couple, refreshCouple, isPremium } = useApp();
+  const { userId, couple, refreshCouple, isPremium, partner } = useApp();
   const content = useContent();
   const insets = useSafeAreaInsets();
   const { s: sz } = useCompact();
@@ -25,6 +26,7 @@ export default function ResultScreen() {
   const [res, setRes] = useState<FinishResult | null>(() => finishCache.get(sessionId) ?? null);
   const [error, setError] = useState<string | null>(null);
   const [sweetDiff, setSweetDiff] = useState<string | null>(null);
+  const [quiz, setQuiz] = useState<QuizStats | null>(null);
   const [pick] = useState(() => Math.random());
   const celebrated = useRef(false);
 
@@ -88,6 +90,42 @@ export default function ResultScreen() {
     };
   }, [session, userId, engine, questionById]);
 
+  // Çift Testleri: istemci tarafı ayrıntı (uyum turları + bilgi turlarında kişi başı doğru)
+  useEffect(() => {
+    if (!session || !userId || engine !== 'quiz') return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from('session_answers').select('*').eq('session_id', session.id).order('round');
+      const rows = (data ?? []) as SessionAnswer[];
+      const qids = [...new Set(rows.map((a) => a.question_id).filter((x): x is string => !!x))];
+      const qs = qids.length ? await loadQuestions(qids, questionById) : {};
+      const byRound = new Map<number, SessionAnswer[]>();
+      rows.forEach((a) => byRound.set(a.round, [...(byRound.get(a.round) ?? []), a]));
+      const st: QuizStats = { compatRounds: 0, same: 0, knowRounds: 0, myCorrect: 0, partnerCorrect: 0 };
+      byRound.forEach((list) => {
+        const mine = list.find((a) => a.user_id === userId);
+        const theirs = list.find((a) => a.user_id !== userId);
+        if (!mine || !theirs) return;
+        const qid = mine.question_id ?? theirs.question_id;
+        const ci = qid ? quizCorrectIndex(qs[qid]) : null;
+        const a = String(mine.answer?.choice);
+        const b = String(theirs.answer?.choice);
+        if (ci != null) {
+          st.knowRounds++;
+          if (a === String(ci)) st.myCorrect++;
+          if (b === String(ci)) st.partnerCorrect++;
+        } else {
+          st.compatRounds++;
+          if (a === b) st.same++;
+        }
+      });
+      if (alive) setQuiz(st);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [session, userId, engine, questionById]);
+
   const ready = !!session && !!game;
   useEffect(() => {
     if (ready && !celebrated.current && session?.status === 'finished') {
@@ -122,9 +160,21 @@ export default function ResultScreen() {
   const progress = fl.next ? (coupleXp - fl.floor) / (fl.next - fl.floor) : 1;
 
   const matchGame = game.engine === 'would_you_rather' || game.engine === 'this_or_that';
-  const copy = headline(game.engine, matches, rounds);
-  const bigNumber = matchGame || game.engine === 'know_me' ? { n: matches, of: rounds } : { n: rounds, of: null };
-  const second = matchGame
+  const partnerName = partner?.display_name || 'Partnerin';
+  const quizKnow = game.engine === 'quiz' && !!quiz && quiz.knowRounds > 0;
+  const quizOnlyKnow = quizKnow && quiz!.compatRounds === 0;
+  const copy = game.engine === 'quiz' ? quizHeadline(quiz, matches, rounds, partnerName) : headline(game.engine, matches, rounds);
+  const bigNumber = quizOnlyKnow
+    ? { n: quiz!.myCorrect, of: quiz!.knowRounds }
+    : matchGame || game.engine === 'know_me' || game.engine === 'quiz'
+      ? { n: matches, of: rounds }
+      : { n: rounds, of: null };
+  const bigCaption = game.engine === 'quiz' ? (quizOnlyKnow ? 'senin doğru cevabın' : 'aynı cevap') : null;
+  const second = game.engine === 'quiz'
+    ? quizKnow
+      ? { k: 'Doğru cevaplar', v: `Sen ${quiz!.myCorrect} · ${partnerName} ${quiz!.partnerCorrect}` }
+      : { k: 'Uyum', v: rounds ? `%${Math.round((matches / rounds) * 100)} aynı cevap` : '—' }
+    : matchGame
     ? { k: 'En tatlı fark', v: sweetDiff ?? (rounds ? `%${Math.round((matches / rounds) * 100)} uyum` : '—') }
     : game.engine === 'know_me'
       ? { k: 'Doğru tahmin', v: `${matches} / ${rounds}` }
@@ -155,6 +205,7 @@ export default function ResultScreen() {
           <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: fonts.serif, fontSize: sz(96, 76), lineHeight: sz(100, 80), color: colors.pearl }}>{bigNumber.n}</Text>
           <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: fonts.serif, fontSize: sz(36, 30), color: colors.mist }}>{bigNumber.of != null ? `/${bigNumber.of}` : 'tur'}</Text>
         </View>
+        {bigCaption ? <Text style={{ marginTop: -sz(14, 10), fontFamily: fonts.medium, fontSize: 13, color: colors.mist, textAlign: 'center' }}>{bigCaption}</Text> : null}
 
         <View style={{ width: '100%', flexDirection: 'row', gap: 10 }}>
           <Stat k="Kazanılan" v={`+${xp} XP`} accent />
@@ -192,6 +243,18 @@ export default function ResultScreen() {
       </ScrollView>
     </View>
   );
+}
+
+type QuizStats = { compatRounds: number; same: number; knowRounds: number; myCorrect: number; partnerCorrect: number };
+
+function quizHeadline(q: QuizStats | null, matches: number, rounds: number, partnerName: string): { a: string; b: string } {
+  if (q && q.knowRounds > 0 && q.compatRounds === 0) {
+    if (q.myCorrect > q.partnerCorrect) return { a: 'Bu test', b: 'senin!' };
+    if (q.partnerCorrect > q.myCorrect) return { a: 'Bu test', b: `${partnerName} kazandı!` };
+    return { a: 'Berabere,', b: 'ikiniz de bilgilisiniz.' };
+  }
+  if (rounds > 0 && matches === rounds) return { a: 'Kusursuz', b: 'uyum!' };
+  return matches * 2 >= rounds ? { a: 'Aynı frekans,', b: 'aynı cevap.' } : { a: 'Farklı cevaplar,', b: 'tatlı sürprizler.' };
 }
 
 function headline(engine: string, matches: number, rounds: number): { a: string; b: string } {

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDialog } from '@/components/Dialog';
 import { Challenges } from '@/components/games/Challenges';
 import { KnowMe } from '@/components/games/KnowMe';
+import { Quiz } from '@/components/games/Quiz';
 import { SecretQuestions } from '@/components/games/SecretQuestions';
 import { Story } from '@/components/games/Story';
 import { ThisOrThat } from '@/components/games/ThisOrThat';
@@ -108,6 +109,9 @@ export default function PlayScreen() {
         break;
       case 'story':
         body = <Story {...props} />;
+        break;
+      case 'quiz':
+        body = <Quiz {...props} />;
         break;
       default:
         body = (

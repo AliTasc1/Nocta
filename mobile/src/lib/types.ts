@@ -7,7 +7,8 @@ export type Engine =
   | 'secret_questions'
   | 'this_or_that'
   | 'story'
-  | 'chat_game';
+  | 'chat_game'
+  | 'quiz';
 
 export type ProfileSettings = {
   blur_previews: boolean;
@@ -83,6 +84,8 @@ export type Question = {
   level: number;
   mood: string;
   options: string[];
+  /** Yalnızca 'quiz': doğru şıkkın indeksi (0–3). null → uyum testi (doğru cevap yok) */
+  correct_index: number | null;
   timer_seconds: number | null;
   is_active: boolean;
 };

@@ -68,6 +68,7 @@ export default function GameDetailScreen() {
   const level = Math.max(0, Math.min(profile?.level ?? 0, partner?.level ?? 3, cap));
   const levelCapped = !isPremium && Math.min(profile?.level ?? 0, partner?.level ?? 3) > cap;
   const lockedGame = game.is_premium && !isPremium;
+  const isQuiz = game.engine === 'quiz';
   const stories = content.stories.filter((s) => s.is_active).sort((a, b) => a.sort - b.sort);
   const selectedStory = stories.find((s) => s.id === storyId);
   const openGame = openSession && openSession.couple_id === couple?.id ? content.gameById(openSession.game_id) : undefined;
@@ -126,7 +127,7 @@ export default function GameDetailScreen() {
         <T v="body">{game.description}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <MetaChip icon="schedule" text={game.duration_label} />
-          {game.engine !== 'story' ? <MetaChip icon="style" text={`${game.rounds} tur`} /> : <MetaChip icon="movie" text="Seçimli hikâye" />}
+          {game.engine !== 'story' ? <MetaChip icon="style" text={`${game.rounds} ${isQuiz ? 'soru' : 'tur'}`} /> : <MetaChip icon="movie" text="Seçimli hikâye" />}
         </View>
       </TintCard>
 
@@ -171,9 +172,9 @@ export default function GameDetailScreen() {
 
           {cats.length ? (
             <View style={{ marginTop: 24 }}>
-              <SectionTitle label="KATEGORİ" title="Bu gece hangisi?" />
+              <SectionTitle label={isQuiz ? 'TEST' : 'KATEGORİ'} title={isQuiz ? 'Test seç' : 'Bu gece hangisi?'} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                <CatChip label="Karışık" icon="shuffle" active={category === null} onPress={() => setCategory(null)} />
+                <CatChip label={isQuiz ? 'Karışık test' : 'Karışık'} icon="shuffle" active={category === null} onPress={() => setCategory(null)} count={isQuiz ? content.questionCount(game.id) : undefined} />
                 {cats.map((c) => {
                   const locked = c.is_premium && !isPremium;
                   return (
@@ -183,9 +184,10 @@ export default function GameDetailScreen() {
                       icon={locked ? 'lock' : c.icon}
                       active={category === c.id}
                       locked={locked}
+                      count={isQuiz && !locked ? content.questionCount(game.id, c.id) : undefined}
                       onPress={() => {
                         if (locked) {
-                          showToast('Bu kategori Nocta Premium ile açılır.', 'info');
+                          showToast(isQuiz ? 'Bu test Nocta Premium ile açılır.' : 'Bu kategori Nocta Premium ile açılır.', 'info');
                           router.push('/premium');
                         } else setCategory(c.id);
                       }}
@@ -194,7 +196,7 @@ export default function GameDetailScreen() {
                 })}
               </View>
               <T v="bodySm" style={{ marginTop: 12 }}>
-                {category ? cats.find((c) => c.id === category)?.description : 'Tüm kategorilerden karışık sorular.'}
+                {category ? cats.find((c) => c.id === category)?.description : isQuiz ? 'Tüm testlerden karışık sorular: bazılarında aynı cevabı vermeye, bazılarında doğruyu bulmaya çalışırsınız.' : 'Tüm kategorilerden karışık sorular.'}
               </T>
             </View>
           ) : null}
@@ -245,14 +247,14 @@ function MetaChip({ icon, text }: { icon: string; text: string }) {
   );
 }
 
-function CatChip({ label, icon, active, locked, onPress }: { label: string; icon: string; active: boolean; locked?: boolean; onPress: () => void }) {
+function CatChip({ label, icon, active, locked, count, onPress }: { label: string; icon: string; active: boolean; locked?: boolean; count?: number; onPress: () => void }) {
   const bg = active ? colors.pearl : colors.whiteFaint;
   const fg = active ? colors.onRose : locked ? colors.mute : colors.pearl;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      accessibilityLabel={locked ? `${label}, Premium` : label}
+      accessibilityLabel={locked ? `${label}, Premium` : count != null ? `${label}, ${count} soru` : label}
       onPress={() => {
         haptic.tap();
         onPress();
@@ -261,6 +263,7 @@ function CatChip({ label, icon, active, locked, onPress }: { label: string; icon
     >
       <Icon name={icon} size={16} color={fg} />
       <Text style={{ fontFamily: active ? fonts.bold : fonts.semibold, fontSize: 13, color: fg }}>{label}</Text>
+      {count != null ? <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: active ? colors.onRose : colors.mute, opacity: 0.8 }}>{`${count} soru`}</Text> : null}
       {locked ? <Pill text="PREMIUM" tone="pro" style={{ paddingHorizontal: 7, paddingVertical: 2 }} /> : null}
     </Pressable>
   );
