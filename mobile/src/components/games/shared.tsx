@@ -172,18 +172,27 @@ export function GameLayout({ top, children, footer, bg, contentStyle, scroll = t
       >
         <View style={{ paddingHorizontal: 20 }}>{top}</View>
         {scroll ? (
+          // Alt butonlar içerikle birlikte kayar: içerik kısaysa en altta durur, uzunsa kaydırılarak ulaşılır
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={[{ flexGrow: 1, paddingHorizontal: 20, paddingTop: gap, paddingBottom: 12, gap }, contentStyle]}
+            contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={!!keyboard}
           >
-            {children}
+            <View style={[{ flexGrow: 1, paddingHorizontal: 20, paddingTop: gap, paddingBottom: 12, gap }, contentStyle]}>{children}</View>
+            {footer ? (
+              <View style={{ marginTop: 'auto', paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) + 4, gap: 8 }}>{footer}</View>
+            ) : (
+              <View style={{ height: Math.max(insets.bottom, 12) }} />
+            )}
           </ScrollView>
         ) : (
-          <View style={[{ flex: 1, paddingHorizontal: 20, paddingTop: gap, paddingBottom: 12, gap }, contentStyle]}>{children}</View>
+          <>
+            <View style={[{ flex: 1, paddingHorizontal: 20, paddingTop: gap, paddingBottom: 12, gap }, contentStyle]}>{children}</View>
+            {footer ? <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) + 4, gap: 8 }}>{footer}</View> : <View style={{ height: Math.max(insets.bottom, 12) }} />}
+          </>
         )}
-        {footer ? <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 16) + 4, gap: 8 }}>{footer}</View> : <View style={{ height: Math.max(insets.bottom, 12) }} />}
       </KeyboardAvoidingView>
     </View>
   );

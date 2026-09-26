@@ -122,8 +122,8 @@ function HeroCard({ session, suggestion }: { session: GameSession | null; sugges
 
   return (
     <View style={styles.hero}>
-      <LinearGradient colors={['#6B1E38', '#2A1530', '#150C13']} locations={[0, 0.55, 1]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} />
-      <View style={styles.heroGlow} />
+      <LinearGradient pointerEvents="none" colors={['#6B1E38', '#2A1530', '#150C13']} locations={[0, 0.55, 1]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={styles.heroGlow} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <T v="label" style={{ flexShrink: 1 }}>{session ? 'DEVAM EDEN OYUN' : 'BU GECENİN OYUNU'}</T>
         {g.duration_label ? (

@@ -5,6 +5,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,7 +20,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 
 import { colors, fonts, radius } from '@/theme';
 
@@ -199,6 +200,24 @@ export function Badge({ n, style }: { n: number; style?: StyleProp<ViewStyle> })
 // ─────────────────────────────────────────────────────────────
 // Yerleşim
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * Sekme (tabs) sahnesinde miyiz? (tabs)/_layout bunu `true` sağlar.
+ * Sekme ekranlarında alt güvenli alanı özel sekme çubuğu zaten kapsar; diğer
+ * tüm ekranlarda alt boşluk (Android gezinme çubuğu / iOS ev çizgisi) Screen'de uygulanır.
+ */
+export const TabSceneContext = React.createContext(false);
+
+/**
+ * Ekran iskeleti.
+ *  - `footer` (ana eylem düğmeleri) ScrollView'un İÇİNDE, içeriğin sonunda durur:
+ *    içerik kısaysa `marginTop: 'auto'` ile en alta yaslanır, uzunsa içerikle birlikte kayar.
+ *    Böylece küçük ekranlarda ya da klavye açıkken düğme asla sıkışıp erişilemez olmaz.
+ *  - Alt güvenli alan her zaman uygulanır (sekme ekranlarında sekme çubuğu kapsar).
+ *  - `keyboard`: klavye açıldığında görünür alan klavyenin üstüne daralır. KeyboardAvoidingView
+ *    yalnızca GERÇEKTEN örtüşen yükseklik kadar dolgu ekler; Android pencereyi zaten
+ *    küçültmüşse (softwareKeyboardLayoutMode: resize) örtüşme 0 olur, çift boşluk oluşmaz.
+ */
 export function Screen({
   children,
   scroll = true,
@@ -222,36 +241,42 @@ export function Screen({
   footer?: React.ReactNode;
   bg?: React.ReactNode;
 }) {
+  const inTabs = React.useContext(TabSceneContext);
+  const insets = useSafeAreaInsets();
+  // Alt kenarı SafeAreaView yerine kendimiz uygularız (kaydırılan içeriğin sonuna eklenir)
+  const safeEdges = edges.filter((e) => e !== 'bottom');
+  const bottomInset = inTabs ? 0 : insets.bottom;
   const pad = padded ? { paddingHorizontal: 20 } : null;
+  const flat = StyleSheet.flatten(contentStyle) ?? {};
+  const basePadBottom = typeof flat.paddingBottom === 'number' ? flat.paddingBottom : footer ? 16 : 32;
   const body = scroll ? (
     <ScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={[{ flexGrow: 1, paddingBottom: 32 }, pad, contentStyle]}
+      contentContainerStyle={[{ flexGrow: 1 }, pad, contentStyle, { paddingBottom: basePadBottom + bottomInset }]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
       showsVerticalScrollIndicator={false}
       refreshControl={onRefresh ? <RefreshControl tintColor={colors.blush} refreshing={!!refreshing} onRefresh={onRefresh} /> : undefined}
     >
       {children}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1 }, pad, contentStyle]}>{children}</View>
-  );
-  const inner = (
-    <>
-      {body}
-      {footer ? <View style={[{ paddingTop: 12, paddingBottom: 12 }, pad]}>{footer}</View> : null}
-    </>
+    <View style={{ flex: 1, paddingBottom: bottomInset }}>
+      <View style={[{ flex: 1 }, pad, contentStyle]}>{children}</View>
+      {footer ? <View style={[{ paddingTop: 12, paddingBottom: 16 }, pad]}>{footer}</View> : null}
+    </View>
   );
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       {bg}
-      <SafeAreaView edges={edges} style={{ flex: 1 }}>
+      <SafeAreaView edges={safeEdges} style={{ flex: 1 }}>
         {keyboard ? (
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-            {inner}
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" enabled={Platform.OS !== 'web'}>
+            {body}
           </KeyboardAvoidingView>
         ) : (
-          inner
+          body
         )}
       </SafeAreaView>
     </View>
@@ -542,4 +567,5 @@ const styles = StyleSheet.create({
   tint: { borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: colors.line, padding: 20 },
   badge: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.rose, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.ink },
   badgeText: { fontFamily: fonts.extrabold, fontSize: 10, color: colors.onRose },
+  footer: { marginTop: 'auto', paddingTop: 20, gap: 8 },
 });

@@ -20,7 +20,7 @@ const is = (...e: Engine[]) => (g: Game) => e.includes(g.engine);
 const FILTERS: Filter[] = [
   { key: 'all', label: 'Tümü', test: () => true },
   { key: 'quick', label: 'Hızlı', test: (g) => (minutes(g) ?? 99) <= 6 },
-  { key: 'questions', label: 'Sorular', test: is('would_you_rather', 'know_me', 'secret_questions', 'this_or_that') },
+  { key: 'questions', label: 'Sorular', test: is('would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'quiz') },
   { key: 'dare', label: 'Cesaret & Görev', test: is('truth_dare', 'challenges') },
   { key: 'story', label: 'Hikâye', test: is('story') },
   { key: 'chat', label: 'Sohbet', test: is('chat_game') },

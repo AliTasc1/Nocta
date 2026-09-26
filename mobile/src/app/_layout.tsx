@@ -20,8 +20,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppLockGate } from '@/components/AppLockGate';
+import { PartnerCall } from '@/components/PartnerCall';
 import { Loading } from '@/components/ui';
-import { listenNotificationTaps, registerForPush } from '@/lib/push';
+import { consumeLaunchNotificationRoute, listenNotificationTaps, registerForPush } from '@/lib/push';
 import { AppProvider, useApp } from '@/providers/AppProvider';
 import { ContentProvider } from '@/providers/ContentProvider';
 import { ToastProvider } from '@/providers/ToastProvider';
@@ -62,15 +63,35 @@ function Guard() {
     if (inAuth || group === 'suspended') router.replace('/');
   }, [ready, session, profile, segments]);
 
+  // Bildirim izni + Android kanalı: onboarding bittikten sonra (ana uygulamaya girince) istenir.
+  // Uzak push token'ı yalnızca mümkünse (EAS projectId, Android Expo Go değil) kaydedilir.
+  const onboarded = !!profile?.onboarded && profile.status !== 'suspended';
   useEffect(() => {
-    if (userId) registerForPush(userId);
-  }, [userId]);
+    if (userId && onboarded) registerForPush(userId);
+  }, [userId, onboarded]);
 
+  // Uygulama çalışırken bildirime (yerel ya da uzak) dokunma
   useEffect(() => {
     let off: (() => void) | undefined;
-    listenNotificationTaps((route) => router.push(route as any)).then((f) => (off = f));
-    return () => off?.();
+    let cancelled = false;
+    listenNotificationTaps((route) => router.push(route as any)).then((f) => {
+      if (cancelled) f();
+      else off = f;
+    });
+    return () => {
+      cancelled = true;
+      off?.();
+    };
   }, []);
+
+  // Soğuk başlangıç: uygulama bir bildirime dokunularak açıldıysa, yönlendirmeler bitince oraya git
+  const canRoute = ready && !!session && onboarded;
+  useEffect(() => {
+    if (!canRoute) return;
+    consumeLaunchNotificationRoute().then((route) => {
+      if (route) setTimeout(() => router.push(route as any), 0);
+    });
+  }, [canRoute]);
 
   return null;
 }
@@ -96,6 +117,7 @@ function Root() {
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
       </Stack>
+      {session && !booting ? <PartnerCall /> : null}
       {booting ? (
         <View style={StyleSheet.absoluteFill}>
           {/* Açılışta ekran boş kalmasın */}
