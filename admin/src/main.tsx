@@ -15,6 +15,8 @@ const Couples = lazy(() => import('./pages/Couples'));
 const Games = lazy(() => import('./pages/Games'));
 const Categories = lazy(() => import('./pages/Categories'));
 const Questions = lazy(() => import('./pages/Questions'));
+const Tests = lazy(() => import('./pages/Tests'));
+const TestDetail = lazy(() => import('./pages/Tests').then((m) => ({ default: m.TestDetail })));
 const Stories = lazy(() => import('./pages/Stories'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Subscriptions = lazy(() => import('./pages/Subscriptions'));
@@ -43,6 +45,8 @@ function Gate() {
           <Route path="oyunlar" element={<Suspense fallback={<PageFallback />}><Games /></Suspense>} />
           <Route path="sorular" element={<Suspense fallback={<PageFallback />}><Questions mode="questions" /></Suspense>} />
           <Route path="gorevler" element={<Suspense fallback={<PageFallback />}><Questions mode="challenges" /></Suspense>} />
+          <Route path="testler" element={<Suspense fallback={<PageFallback />}><Tests /></Suspense>} />
+          <Route path="testler/:id" element={<Suspense fallback={<PageFallback />}><TestDetail /></Suspense>} />
           <Route path="hikayeler" element={<Suspense fallback={<PageFallback />}><Stories /></Suspense>} />
           <Route path="raporlar" element={<Suspense fallback={<PageFallback />}><Reports /></Suspense>} />
           <Route path="abonelikler" element={<Suspense fallback={<PageFallback />}><Subscriptions /></Suspense>} />

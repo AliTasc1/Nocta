@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import { chunk, downloadText, fetchAll, likeEscape, mustAffect, parseCsv, toCsv, unwrap, useDebounced, useLoad } from '../lib/data';
 import { AppError } from '../lib/errors';
 import {
-  ENGINE_LABEL, ENGINE_SHORT, LEVELS, MOODS, levelLabel, levelTone, moodLabel, optionCount, type Engine,
+  ENGINE_LABEL, ENGINE_SHORT, LEVELS, MOODS, QUESTION_ENGINES, QUIZ_OPTION_MAX, levelLabel, levelTone, moodLabel, optLetter, optionCount,
+  type Engine,
 } from '../lib/constants';
 import { num, pct } from '../lib/format';
 import { useAuth } from '../auth/AuthContext';
@@ -13,27 +14,32 @@ import {
   useConfirm, useToast,
 } from '../ui/ui';
 
-type Mode = 'questions' | 'challenges';
+type Mode = 'questions' | 'challenges' | 'quiz';
 type GameLite = { id: string; name: string; engine: Engine; sort: number };
 type CatLite = { id: string; name: string; game_id: string; sort: number; is_active: boolean };
 type Q = {
   id: string; category_id: string; text: string; kind: 'truth' | 'dare' | null; level: number; mood: string;
-  options: string[]; timer_seconds: number | null; is_active: boolean; created_at: string;
+  options: string[]; correct_index: number | null; timer_seconds: number | null; is_active: boolean; created_at: string;
   category: { id: string; name: string; game_id: string; game: { id: string; name: string; engine: Engine } };
 };
 type Draft = {
   id?: string; game_id: string; category_id: string; text: string; kind: 'truth' | 'dare'; level: number; mood: string;
-  options: string[]; timer_on: boolean; timer_seconds: number; is_active: boolean;
+  options: string[]; correct_index: number | null; timer_on: boolean; timer_seconds: number; is_active: boolean;
 };
 
 const PAGE = 25;
-const SELECT = 'id,category_id,text,kind,level,mood,options,timer_seconds,is_active,created_at,category:categories!inner(id,name,game_id,game:games!inner(id,name,engine))';
+const SELECT = 'id,category_id,text,kind,level,mood,options,correct_index,timer_seconds,is_active,created_at,category:categories!inner(id,name,game_id,game:games!inner(id,name,engine))';
 
 const KIND_LABEL = { truth: 'Doğruluk', dare: 'Cesaret' } as const;
 
-function previewKind(engine: Engine | undefined, d: Pick<Draft, 'kind' | 'timer_on' | 'timer_seconds'>): string {
+/** Sayfanın kapsadığı oyun motorları. */
+const scopeEngines = (mode: Mode): Engine[] =>
+  mode === 'challenges' ? ['challenges'] : mode === 'quiz' ? ['quiz'] : QUESTION_ENGINES;
+
+function previewKind(engine: Engine | undefined, d: Pick<Draft, 'kind' | 'timer_on' | 'timer_seconds' | 'correct_index'>): string {
   if (!engine) return 'SORU';
   if (engine === 'truth_dare') return d.kind === 'dare' ? 'CESARET' : 'DOĞRULUK';
+  if (engine === 'quiz') return d.correct_index != null ? 'TEST · BİLGİ' : 'TEST · UYUM';
   if (engine === 'challenges') return d.timer_on ? `GÖREV · ${num(d.timer_seconds)} sn` : 'GÖREV';
   return ENGINE_SHORT[engine];
 }
@@ -42,8 +48,21 @@ function normalizeOptions(o: unknown): string[] {
   return Array.isArray(o) ? o.map((x) => (typeof x === 'string' ? x : typeof x === 'object' && x && 'text' in x ? String((x as { text: unknown }).text) : String(x))) : [];
 }
 
-export default function Questions({ mode }: { mode: Mode }) {
+/** Liste satırında 4 test seçeneğini kısaca gösterir; doğru cevap vurgulanır. */
+function QuizOptions({ options, correct }: { options: string[]; correct: number | null }) {
+  return (
+    <div className="quiz-opts">
+      {options.slice(0, 4).map((o, i) => (
+        <span key={i} className={`quiz-opt ${correct === i ? 'ok' : ''}`} title={o}><b>{optLetter(i)}</b>{o}</span>
+      ))}
+    </div>
+  );
+}
+
+export default function Questions({ mode, fixedCategory, onChanged }: { mode: Mode; fixedCategory?: string; onChanged?: () => void }) {
   const chal = mode === 'challenges';
+  const quizMode = mode === 'quiz';
+  const locked = !!fixedCategory;
   const unit = chal ? 'görev' : 'soru';
   const { perms } = useAuth();
   const toast = useToast();
@@ -51,8 +70,9 @@ export default function Questions({ mode }: { mode: Mode }) {
   const [params, setParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
 
+  const [engineF, setEngineF] = useState<Engine | ''>('');
   const [gameF, setGameF] = useState('');
-  const [catF, setCatF] = useState(params.get('kategori') ?? '');
+  const [catF, setCatF] = useState(fixedCategory ?? params.get('kategori') ?? '');
   const [levelF, setLevelF] = useState<string>('');
   const [moodF, setMoodF] = useState('');
   const [activeF, setActiveF] = useState<'' | 'on' | 'off'>('');
@@ -64,34 +84,36 @@ export default function Questions({ mode }: { mode: Mode }) {
   const [exporting, setExporting] = useState(false);
   const q = useDebounced(search.trim(), 300);
 
-  // Kapsam: görevler → challenges motoru; sorular → diğer içerik motorları
+  // Kapsam: görevler → challenges; testler → quiz; sorular → diğer içerik motorları (testler dahil)
   const games = useLoad(async () => {
     const rows = unwrap(await supabase.from('games').select('id,name,engine,sort').order('sort')) as GameLite[];
-    return rows.filter((g) => (chal ? g.engine === 'challenges' : g.engine !== 'challenges' && g.engine !== 'story'));
-  }, [chal]);
+    const scope = scopeEngines(mode);
+    return rows.filter((g) => scope.includes(g.engine));
+  }, [mode]);
   const gameIds = useMemo(() => (games.data ?? []).map((g) => g.id), [games.data]);
   const cats = useLoad(async () => {
     if (!gameIds.length) return [] as CatLite[];
     return unwrap(await supabase.from('categories').select('id,name,game_id,sort,is_active').in('game_id', gameIds).order('sort')) as CatLite[];
   }, [gameIds.join(',')]);
   const gmap = useMemo(() => Object.fromEntries((games.data ?? []).map((g) => [g.id, g])), [games.data]);
-  const catOptions = (cats.data ?? []).filter((c) => !gameF || c.game_id === gameF);
+  const gameOptions = (games.data ?? []).filter((g) => !engineF || g.engine === engineF);
+  const catOptions = (cats.data ?? []).filter((c) => (!gameF || c.game_id === gameF) && (!engineF || gmap[c.game_id]?.engine === engineF));
 
   // Bağlantıdan gelen kategori → oyunu da seç
   useEffect(() => {
-    const k = params.get('kategori');
+    const k = fixedCategory ?? params.get('kategori');
     if (k && cats.data) {
       const c = cats.data.find((x) => x.id === k);
       if (c) { setCatF(c.id); setGameF(c.game_id); }
     }
-  }, [params, cats.data]);
-  useEffect(() => { setPage(0); setSel(new Set()); }, [gameF, catF, levelF, moodF, activeF, q, mode]);
-  useEffect(() => { setGameF(''); setCatF(params.get('kategori') ?? ''); setDraft(null); /* mod değişti */ // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [params, cats.data, fixedCategory]);
+  useEffect(() => { setPage(0); setSel(new Set()); }, [engineF, gameF, catF, levelF, moodF, activeF, q, mode]);
+  useEffect(() => { setEngineF(''); setGameF(''); setCatF(fixedCategory ?? params.get('kategori') ?? ''); setDraft(null); /* mod değişti */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fixedCategory]);
 
   const build = (select: string, withCount: boolean) => {
     let qb = supabase.from('questions').select(select, withCount ? { count: 'exact' } : undefined);
-    qb = chal ? qb.eq('category.game.engine', 'challenges') : qb.in('category.game.engine', ['truth_dare', 'would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'chat_game']);
+    qb = engineF ? qb.eq('category.game.engine', engineF) : qb.in('category.game.engine', scopeEngines(mode));
     if (gameF) qb = qb.eq('category.game_id', gameF);
     if (catF) qb = qb.eq('category_id', catF);
     if (levelF !== '') qb = qb.eq('level', Number(levelF));
@@ -120,17 +142,18 @@ export default function Questions({ mode }: { mode: Mode }) {
       }
     }
     return { rows, total: res.count ?? 0, usage, compl };
-  }, [mode, gameF, catF, levelF, moodF, activeF, q, page]);
+  }, [mode, engineF, gameF, catF, levelF, moodF, activeF, q, page]);
 
   const rows = list.data?.rows ?? [];
+  const changed = () => { list.reload(true); onChanged?.(); };
   const allSel = rows.length > 0 && rows.every((r) => sel.has(r.id));
 
   const openNew = () => {
     const cat = catF ? cats.data?.find((c) => c.id === catF) : undefined;
-    const gid = cat?.game_id || gameF || games.data?.[0]?.id || '';
+    const gid = cat?.game_id || gameF || gameOptions[0]?.id || games.data?.[0]?.id || '';
     const firstCat = cat?.id || (cats.data ?? []).find((c) => c.game_id === gid)?.id || '';
     const eng = gmap[gid]?.engine;
-    setDraft({ game_id: gid, category_id: firstCat, text: '', kind: 'truth', level: 1, mood: 'karisik', options: Array(optionCount(eng)).fill(''), timer_on: chal, timer_seconds: 60, is_active: true });
+    setDraft({ game_id: gid, category_id: firstCat, text: '', kind: 'truth', level: 1, mood: 'karisik', options: Array(optionCount(eng)).fill(''), correct_index: null, timer_on: chal, timer_seconds: 60, is_active: true });
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
   const openEdit = (r: Q) => {
@@ -140,7 +163,7 @@ export default function Questions({ mode }: { mode: Mode }) {
     while (opts.length < n) opts.push('');
     setDraft({
       id: r.id, game_id: r.category.game_id, category_id: r.category_id, text: r.text, kind: r.kind ?? 'truth', level: r.level, mood: r.mood,
-      options: n ? opts.slice(0, n) : opts, timer_on: r.timer_seconds != null, timer_seconds: r.timer_seconds ?? 60, is_active: r.is_active,
+      options: n ? opts.slice(0, n) : opts, correct_index: eng === 'quiz' ? r.correct_index ?? null : null, timer_on: r.timer_seconds != null, timer_seconds: r.timer_seconds ?? 60, is_active: r.is_active,
     });
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
@@ -159,7 +182,7 @@ export default function Questions({ mode }: { mode: Mode }) {
       }
       toast.success(action === 'delete' ? `${num(ids.length)} ${unit} silindi.` : action === 'on' ? `${num(ids.length)} ${unit} aktifleştirildi.` : `${num(ids.length)} ${unit} pasife alındı.`);
       setSel(new Set());
-      list.reload(true);
+      changed();
     } catch (e) { toast.error(e); }
   };
 
@@ -177,7 +200,7 @@ export default function Questions({ mode }: { mode: Mode }) {
       mustAffect(await supabase.from('questions').delete().eq('id', r.id).select('id'));
       toast.success('Silindi.');
       if (draft?.id === r.id) setDraft(null);
-      list.reload(true);
+      changed();
     } catch (e) { toast.error(e); }
   };
 
@@ -190,12 +213,18 @@ export default function Questions({ mode }: { mode: Mode }) {
         const u = await supabase.from('question_usage').select('question_id,uses:count').in('question_id', part);
         (u.data as { question_id: string; uses: number }[] | null)?.forEach((x) => { usage[x.question_id] = x.uses; });
       }
-      const header = ['id', 'oyun', 'kategori', 'metin', 'tur', 'seviye', 'ruh_hali', 'secenekler', 'sure_sn', 'aktif', 'kullanim'];
-      const lines = all.map((r) => [
-        r.id, r.category.game.name, r.category.name, r.text, r.kind ? KIND_LABEL[r.kind] : '', r.level, r.mood,
-        normalizeOptions(r.options).join(' | '), r.timer_seconds ?? '', r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0,
-      ]);
-      downloadText(`nocta-${chal ? 'gorevler' : 'sorular'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv([header, ...lines]));
+      const header = quizMode
+        ? ['id', 'oyun', 'test', 'metin', 'seviye', 'ruh_hali', 'secenekler', 'a', 'b', 'c', 'd', 'dogru', 'aktif', 'kullanim']
+        : ['id', 'oyun', 'kategori', 'metin', 'tur', 'seviye', 'ruh_hali', 'secenekler', 'dogru', 'sure_sn', 'aktif', 'kullanim'];
+      const lines = all.map((r) => {
+        const opts = normalizeOptions(r.options);
+        const correct = r.category.game.engine === 'quiz' ? optLetter(r.correct_index) : '';
+        return quizMode
+          ? [r.id, r.category.game.name, r.category.name, r.text, r.level, r.mood, opts.join(' | '), opts[0] ?? '', opts[1] ?? '', opts[2] ?? '', opts[3] ?? '', correct, r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0]
+          : [r.id, r.category.game.name, r.category.name, r.text, r.kind ? KIND_LABEL[r.kind] : '', r.level, r.mood,
+            opts.join(' | '), correct, r.timer_seconds ?? '', r.is_active ? 'evet' : 'hayır', usage[r.id] ?? 0];
+      });
+      downloadText(`nocta-${chal ? 'gorevler' : quizMode ? 'testler' : 'sorular'}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv([header, ...lines]));
       toast.success(`${num(all.length)} ${unit} dışa aktarıldı.`);
     } catch (e) { toast.error(e); } finally { setExporting(false); }
   };
@@ -206,13 +235,13 @@ export default function Questions({ mode }: { mode: Mode }) {
     <>
       <ContentNote />
       {!perms.content && <InfoNote tone="warn">Rolünüz içerik düzenlemeye izin vermiyor; bu bölümü yalnızca görüntüleyebilirsiniz.</InfoNote>}
-      {noGames && <InfoNote tone="warn">{chal ? 'Görev motorunu kullanan bir oyun yok. Oyunlar bölümünden “Çift Görevleri” motoruyla bir oyun oluşturun.' : 'Soru içeren bir oyun yok. Önce Oyunlar bölümünden bir oyun oluşturun.'}</InfoNote>}
+      {noGames && <InfoNote tone="warn">{chal ? 'Görev motorunu kullanan bir oyun yok. Oyunlar bölümünden “Çift Görevleri” motoruyla bir oyun oluşturun.' : quizMode ? 'Test motorunu kullanan bir oyun yok. Oyunlar bölümünden “Test (4 seçenek)” motoruyla bir oyun oluşturun.' : 'Soru içeren bir oyun yok. Önce Oyunlar bölümünden bir oyun oluşturun.'}</InfoNote>}
 
       {draft && perms.content && (
         <div ref={editorRef} style={{ scrollMarginTop: 16 }}>
           <Editor key={draft.id ?? 'new'} mode={mode} draft={draft} games={games.data ?? []} cats={cats.data ?? []}
             onClose={() => setDraft(null)}
-            onSaved={(keepOpen) => { list.reload(true); if (!keepOpen) setDraft(null); }}
+            onSaved={(keepOpen) => { changed(); if (!keepOpen) setDraft(null); }}
             onDelete={draft.id ? () => { const r = rows.find((x) => x.id === draft.id); if (r) removeOne(r); } : undefined} />
         </div>
       )}
@@ -220,14 +249,24 @@ export default function Questions({ mode }: { mode: Mode }) {
       <div className="tbl-card">
         <div className="tbl-head">
           <div className="row wrap" style={{ gap: 8 }}>
-            <select className="select sm auto" value={gameF} onChange={(e) => { setGameF(e.target.value); setCatF(''); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Oyun">
-              <option value="">Tüm oyunlar</option>
-              {(games.data ?? []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-            <select className="select sm auto" value={catF} onChange={(e) => { setCatF(e.target.value); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Kategori">
-              <option value="">Tüm kategoriler</option>
-              {catOptions.map((c) => <option key={c.id} value={c.id}>{c.name}{!gameF && gmap[c.game_id] ? ` · ${gmap[c.game_id].name}` : ''}</option>)}
-            </select>
+            {mode === 'questions' && (
+              <select className="select sm auto" value={engineF} onChange={(e) => { setEngineF(e.target.value as Engine | ''); setGameF(''); setCatF(''); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Oyun motoru">
+                <option value="">Tüm motorlar</option>
+                {QUESTION_ENGINES.map((en) => <option key={en} value={en}>{ENGINE_LABEL[en]}</option>)}
+              </select>
+            )}
+            {!locked && (
+              <>
+                <select className="select sm auto" value={gameF} onChange={(e) => { setGameF(e.target.value); setCatF(''); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label="Oyun">
+                  <option value="">Tüm oyunlar</option>
+                  {gameOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+                <select className="select sm auto" value={catF} onChange={(e) => { setCatF(e.target.value); if (params.get('kategori')) setParams({}, { replace: true }); }} aria-label={quizMode ? 'Test' : 'Kategori'}>
+                  <option value="">{quizMode ? 'Tüm testler' : 'Tüm kategoriler'}</option>
+                  {catOptions.map((c) => <option key={c.id} value={c.id}>{c.name}{!gameF && gmap[c.game_id] ? ` · ${gmap[c.game_id].name}` : ''}</option>)}
+                </select>
+              </>
+            )}
             <select className="select sm auto" value={levelF} onChange={(e) => setLevelF(e.target.value)} aria-label="Seviye">
               <option value="">Tüm seviyeler</option>
               {LEVELS.map((l) => <option key={l.v} value={l.v}>{l.t}</option>)}
@@ -269,13 +308,13 @@ export default function Questions({ mode }: { mode: Mode }) {
               <thead><tr>
                 {perms.content && <th className="chk"><input type="checkbox" className="checkbox" checked={allSel} aria-label="Sayfadakilerin tümünü seç"
                   onChange={() => setSel((s) => { const n = new Set(s); rows.forEach((r) => (allSel ? n.delete(r.id) : n.add(r.id))); return n; })} /></th>}
-                <th>{chal ? 'Görev' : 'Soru'}</th><th>Kategori</th><th>Seviye</th>{chal ? <th>Süre</th> : <th>Ruh hali</th>}<th>Kullanım</th>{chal && <th>Tamamlama</th>}<th>Durum</th><th />
+                <th>{chal ? 'Görev' : 'Soru'}</th><th>{quizMode ? 'Test' : 'Kategori'}</th><th>Seviye</th>{chal ? <th>Süre</th> : <th>Ruh hali</th>}<th>Kullanım</th>{chal && <th>Tamamlama</th>}<th>Durum</th><th />
               </tr></thead>
               <tbody>
                 {list.loading && !list.data ? <SkelRows cols={chal ? 9 : 8} /> : rows.length === 0 ? (
-                  <tr><td colSpan={10}><Empty icon={chal ? 'bolt' : 'help'} title={q || catF || gameF || levelF || moodF || activeF ? 'Filtrelere uyan içerik yok' : chal ? 'Henüz görev yok' : 'Henüz soru yok'}
+                  <tr><td colSpan={10}><Empty icon={chal ? 'bolt' : quizMode ? 'quiz' : 'help'} title={q || (catF && !locked) || gameF || engineF || levelF || moodF || activeF ? 'Filtrelere uyan içerik yok' : chal ? 'Henüz görev yok' : 'Henüz soru yok'}
                     action={perms.content && !noGames ? <Btn variant="primary" icon="add" onClick={openNew}>{chal ? 'Yeni görev' : 'Yeni soru'}</Btn> : undefined}>
-                    {q || catF ? 'Filtreleri değiştirmeyi deneyin.' : 'Tek tek ekleyebilir ya da toplu içe aktarabilirsiniz.'}
+                    {q || (catF && !locked) ? 'Filtreleri değiştirmeyi deneyin.' : 'Tek tek ekleyebilir ya da toplu içe aktarabilirsiniz.'}
                   </Empty></td></tr>
                 ) : rows.map((r) => {
                   const c = list.data?.compl[r.id];
@@ -285,12 +324,21 @@ export default function Questions({ mode }: { mode: Mode }) {
                         onChange={() => setSel((s) => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })} /></td>}
                       <td>
                         <div className="q-text clamp2">{r.text}</div>
-                        <div className="row wrap" style={{ gap: 6, marginTop: 4 }}>
-                          {r.kind && <span className="tag">{KIND_LABEL[r.kind].toLocaleUpperCase('tr-TR')}</span>}
-                          {r.options.length > 0 && <span className="tag ellipsis" style={{ maxWidth: 380 }}>{r.options.join(' · ')}</span>}
-                        </div>
+                        {r.category.game.engine === 'quiz' ? (
+                          <div className="row wrap" style={{ gap: 6, marginTop: 6, alignItems: 'flex-start' }}>
+                            {r.correct_index != null
+                              ? <Badge tone="ok" title="Bilgi testi: doğru cevap puanlanır">DOĞRU: {optLetter(r.correct_index)}</Badge>
+                              : <Badge tone="rose" title="Uyum testi: partnerler aynı şıkkı seçmeye çalışır">UYUM</Badge>}
+                            <QuizOptions options={r.options} correct={r.correct_index} />
+                          </div>
+                        ) : (
+                          <div className="row wrap" style={{ gap: 6, marginTop: 4 }}>
+                            {r.kind && <span className="tag">{KIND_LABEL[r.kind].toLocaleUpperCase('tr-TR')}</span>}
+                            {r.options.length > 0 && <span className="tag ellipsis" style={{ maxWidth: 380 }}>{r.options.join(' · ')}</span>}
+                          </div>
+                        )}
                       </td>
-                      <td className="m">{r.category.name}<div className="tag">{r.category.game.name}</div></td>
+                      <td className="m">{r.category.name}<div className="tag">{r.category.game.name}{mode === 'questions' && r.category.game.engine === 'quiz' ? ' · TEST' : ''}</div></td>
                       <td><Badge tone={levelTone(r.level)}>{levelLabel(r.level).toLocaleUpperCase('tr-TR')}</Badge></td>
                       {chal ? <td className="m nowrap">{r.timer_seconds ? `${num(r.timer_seconds)} sn` : '—'}</td> : <td className="m">{moodLabel(r.mood)}</td>}
                       <td className="num">{num(list.data?.usage[r.id] ?? 0)}</td>
@@ -314,7 +362,7 @@ export default function Questions({ mode }: { mode: Mode }) {
         <Pager page={page} pageSize={PAGE} total={list.data?.total ?? 0} onPage={setPage} unit={unit} />
       </div>
 
-      {importing && <ImportModal mode={mode} games={games.data ?? []} cats={cats.data ?? []} defaultCat={catF} onClose={() => setImporting(false)} onDone={() => { setImporting(false); list.reload(true); }} />}
+      {importing && <ImportModal mode={mode} games={games.data ?? []} cats={cats.data ?? []} defaultCat={catF} onClose={() => setImporting(false)} onDone={() => { setImporting(false); changed(); }} />}
     </>
   );
 }
@@ -326,7 +374,16 @@ function validateDraft(d: Draft, engine: Engine | undefined): string | null {
   if (t.length < 2) return 'Metin en az 2 karakter olmalı.';
   if (t.length > 600) return 'Metin en fazla 600 karakter olabilir.';
   const n = optionCount(engine);
-  if (n && d.options.filter((o) => o.trim()).length !== n) return `Bu oyun için tam olarak ${n} seçenek girilmeli.`;
+  if (engine === 'quiz') {
+    for (let i = 0; i < 4; i++) {
+      const o = (d.options[i] ?? '').trim();
+      if (!o) return `${optLetter(i)} seçeneği boş bırakılamaz; testlerde 4 seçeneğin tümü zorunludur.`;
+      if (o.length > QUIZ_OPTION_MAX) return `${optLetter(i)} seçeneği en fazla ${QUIZ_OPTION_MAX} karakter olabilir.`;
+    }
+    const low = d.options.map((o) => o.trim().toLocaleLowerCase('tr-TR'));
+    if (new Set(low).size !== low.length) return 'Seçenekler birbirinden farklı olmalı.';
+    if (d.correct_index != null && !(d.correct_index >= 0 && d.correct_index <= 3)) return 'Doğru cevap A, B, C ya da D olmalı.';
+  } else if (n && d.options.filter((o) => o.trim()).length !== n) return `Bu oyun için tam olarak ${n} seçenek girilmeli.`;
   if (d.timer_on && !(d.timer_seconds >= 5 && d.timer_seconds <= 3600)) return 'Süre 5 ile 3600 saniye arasında olmalı.';
   return null;
 }
@@ -347,7 +404,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
   const changeGame = (gid: string) => {
     const eng = games.find((g) => g.id === gid)?.engine;
     const n = optionCount(eng);
-    setD((x) => ({ ...x, game_id: gid, category_id: cats.find((c) => c.game_id === gid)?.id ?? '', options: n ? [...x.options, '', '', '', ''].slice(0, n) : [] }));
+    setD((x) => ({ ...x, game_id: gid, category_id: cats.find((c) => c.game_id === gid)?.id ?? '', options: n ? [...x.options, '', '', '', ''].slice(0, n) : [], correct_index: eng === 'quiz' ? x.correct_index : null }));
   };
 
   const save = async (active: boolean, next = false) => {
@@ -362,6 +419,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
       level: d.level,
       mood: d.mood,
       options: nOpt ? d.options.map((o) => o.trim()) : [],
+      correct_index: engine === 'quiz' ? d.correct_index : null,
       timer_seconds: chal && d.timer_on ? Math.round(d.timer_seconds) : null,
       is_active: active,
     };
@@ -370,7 +428,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
       else unwrap(await supabase.from('questions').insert(payload).select('id').single());
       toast.success(d.id ? 'Değişiklikler kaydedildi.' : active ? 'Yayınlandı.' : 'Taslak olarak kaydedildi.');
       if (next) {
-        setD((x) => ({ ...x, id: undefined, text: '', options: x.options.map(() => '') }));
+        setD((x) => ({ ...x, id: undefined, text: '', options: x.options.map(() => ''), correct_index: null }));
         onSaved(true);
       } else onSaved(false);
     } catch (x) { toast.error(x); } finally { setBusy(''); }
@@ -391,9 +449,9 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
               </select>
             </Field>
           )}
-          <Field label="Kategori" error={!gameCats.length ? 'Bu oyunda kategori yok. Önce Kategoriler bölümünden ekleyin.' : null}>
+          <Field label={engine === 'quiz' ? 'Test' : 'Kategori'} error={!gameCats.length ? (engine === 'quiz' ? 'Bu oyunda test yok. Önce Testler bölümünden bir test oluşturun.' : 'Bu oyunda kategori yok. Önce Kategoriler bölümünden ekleyin.') : null}>
             <select className="select" value={d.category_id} onChange={(e) => set('category_id', e.target.value)}>
-              {!d.category_id && <option value="">Kategori seçin</option>}
+              {!d.category_id && <option value="">{engine === 'quiz' ? 'Test seçin' : 'Kategori seçin'}</option>}
               {gameCats.map((c) => <option key={c.id} value={c.id}>{c.name}{c.is_active ? '' : ' (pasif)'}</option>)}
             </select>
           </Field>
@@ -410,7 +468,27 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
         <Field label="Metin" right={<span className={d.text.length > 600 ? '' : 'muted2'} style={{ color: d.text.length > 600 ? 'var(--red)' : undefined }}>{num(d.text.length)} / 600</span>}>
           <textarea className="textarea" value={d.text} onChange={(e) => set('text', e.target.value)} placeholder={chal ? 'Partnerine 60 saniye boyunca gözlerini kaçırmadan bak.' : 'Partnerine henüz hiç söylemediğin romantik bir düşüncen var mı?'} autoFocus={!d.id} />
         </Field>
-        {nOpt > 0 && (
+        {engine === 'quiz' && (
+          <>
+            <div className="col" style={{ gap: 8 }}>
+              <span className="small muted" style={{ fontWeight: 600 }}>Seçenekler · 4 adet, tümü zorunlu (en fazla {QUIZ_OPTION_MAX} karakter)</span>
+              {d.options.map((o, i) => (
+                <div className="row" key={i}>
+                  <span className="mono small muted2" style={{ width: 18 }}>{optLetter(i)}</span>
+                  <input className="input" value={o} maxLength={QUIZ_OPTION_MAX} aria-label={`${optLetter(i)} seçeneği`}
+                    onChange={(e) => set('options', d.options.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`${optLetter(i)} seçeneği`}
+                    style={d.correct_index === i ? { borderColor: 'var(--green)' } : undefined} />
+                  <span className="small muted2 mono" style={{ width: 44, textAlign: 'right' }}>{num(o.length)}/{QUIZ_OPTION_MAX}</span>
+                </div>
+              ))}
+            </div>
+            <Field label="Doğru cevap" hint={d.correct_index == null ? 'Uyum testi: doğru cevap yok, partnerler aynı şıkkı seçmeye çalışır.' : 'Bilgi testi: doğru cevabı bilen puan alır.'}>
+              <Segmented<number> value={d.correct_index ?? -1} onChange={(v) => set('correct_index', v < 0 ? null : v)}
+                options={[{ v: -1, t: 'Yok (uyum testi)' }, { v: 0, t: 'A' }, { v: 1, t: 'B' }, { v: 2, t: 'C' }, { v: 3, t: 'D' }]} />
+            </Field>
+          </>
+        )}
+        {nOpt > 0 && engine !== 'quiz' && (
           <div className="col" style={{ gap: 8 }}>
             <span className="small muted" style={{ fontWeight: 600 }}>Seçenekler · tam {nOpt} adet{engine === 'know_me' ? ' (partner hakkında tahmin seçenekleri)' : ''}</span>
             {d.options.map((o, i) => (
@@ -455,7 +533,14 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
           <span className={`q ${d.text.trim() ? '' : 'ph'}`}>{d.text.trim() || (chal ? 'Görev metni burada görünecek.' : 'Soru metni burada görünecek.')}</span>
           {nOpt > 0 && (
             <div className="col" style={{ gap: 8 }}>
-              {d.options.map((o, i) => <div key={i} className="popt" style={{ opacity: o.trim() ? 1 : 0.45 }}>{o.trim() || `${i + 1}. seçenek`}</div>)}
+              {engine === 'quiz'
+                ? d.options.map((o, i) => (
+                  <div key={i} className={`popt quiz ${d.correct_index === i ? 'ok' : ''}`} style={{ opacity: o.trim() ? 1 : 0.45 }}>
+                    <span className="pl">{optLetter(i)}</span><span style={{ flex: 1 }}>{o.trim() || `${optLetter(i)} seçeneği`}</span>
+                    {d.correct_index === i && <Icon n="check_circle" size={18} fill />}
+                  </div>
+                ))
+                : d.options.map((o, i) => <div key={i} className="popt" style={{ opacity: o.trim() ? 1 : 0.45 }}>{o.trim() || `${i + 1}. seçenek`}</div>)}
             </div>
           )}
           <div className="row" style={{ justifyContent: 'space-between', marginTop: 'auto' }}>
@@ -463,6 +548,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
             {chal && d.timer_on && <span className="row small" style={{ gap: 4, color: 'var(--pink)' }}><Icon n="timer" size={16} />{num(d.timer_seconds)} sn</span>}
           </div>
         </div>
+        {engine === 'quiz' && <span className="small muted" style={{ lineHeight: 1.5 }}>{d.correct_index == null ? 'Uyum testi: iki partner aynı şıkkı seçerse eşleşme sayılır.' : `Bilgi testi: doğru cevap ${optLetter(d.correct_index)}. Oyun sonunda doğru sayıları gösterilir.`}</span>}
         <span className="small muted" style={{ lineHeight: 1.5 }}>İçerik kuralları: rıza odaklı, açık cinsel betimleme yok, her kart atlanabilir.</span>
         {engine && <span className="tag">Motor: {ENGINE_LABEL[engine]}</span>}
       </div>
@@ -471,7 +557,7 @@ function Editor({ mode, draft, games, cats, onClose, onSaved, onDelete }: {
 }
 
 // ── Toplu içe aktarma ──────────────────────────────────────────
-type ParsedItem = { text: string; kind: 'truth' | 'dare' | null; level: number; mood: string; options: string[]; timer_seconds: number | null };
+type ParsedItem = { text: string; kind: 'truth' | 'dare' | null; level: number; mood: string; options: string[]; correct_index: number | null; timer_seconds: number | null };
 const LEVEL_WORDS: Record<string, number> = { yumusak: 0, 'yumuşak': 0, soft: 0, flortoz: 1, 'flörtöz': 1, flirty: 1, cesur: 2, bold: 2, vahsi: 3, 'vahşi': 3, wild: 3 };
 const parseLevel = (v: unknown, def: number) => {
   if (v == null || v === '') return def;
@@ -486,6 +572,16 @@ const parseKind = (v: unknown, def: 'truth' | 'dare') => {
   if (['dare', 'cesaret', 'c'].includes(s)) return 'dare';
   return null;
 };
+/** Doğru cevap: boş / “-” / “yok” → null (uyum); A–D ya da 0–3 → indeks; aksi halde NaN. */
+const parseCorrect = (v: unknown): number | null => {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 && v <= 3 ? v : NaN;
+  const s = String(v).trim().toLocaleUpperCase('tr-TR');
+  if (s === '' || s === '-' || s === 'YOK') return null;
+  if (/^[A-D]$/.test(s)) return s.charCodeAt(0) - 65;
+  if (/^[0-3]$/.test(s)) return Number(s);
+  return NaN;
+};
 const parseMood = (v: unknown, def: string) => {
   if (v == null || v === '') return def;
   const s = String(v).trim().toLocaleLowerCase('tr-TR');
@@ -494,6 +590,7 @@ const parseMood = (v: unknown, def: string) => {
 
 function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode: Mode; games: GameLite[]; cats: CatLite[]; defaultCat: string; onClose: () => void; onDone: () => void }) {
   const chal = mode === 'challenges';
+  const quizMode = mode === 'quiz';
   const [catId, setCatId] = useState(defaultCat || cats[0]?.id || '');
   const [fmt, setFmt] = useState<'lines' | 'csv' | 'json'>('lines');
   const [text, setText] = useState('');
@@ -507,6 +604,7 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
   const cat = cats.find((c) => c.id === catId);
   const engine = games.find((g) => g.id === cat?.game_id)?.engine;
   const nOpt = optionCount(engine);
+  const isQuiz = engine === 'quiz';
 
   const parsed = useMemo(() => {
     const items: ParsedItem[] = [];
@@ -521,21 +619,32 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
       else if (typeof raw.options === 'string' && raw.options.trim()) opts = raw.options.split('|').map((o) => o.trim()).filter(Boolean);
       const tmRaw = raw.timer_seconds ?? (chal && timer !== '' ? timer : null);
       const tm = tmRaw == null || tmRaw === '' ? null : Number(tmRaw);
+      const ci = isQuiz ? parseCorrect(raw.correct_index) : null;
       const where = `${i}. satır`;
       if (t.length < 2 || t.length > 600) return errors.push(`${where}: metin 2–600 karakter olmalı.`);
       if (Number.isNaN(lv)) return errors.push(`${where}: seviye anlaşılamadı.`);
       if (md == null) return errors.push(`${where}: ruh hali anlaşılamadı.`);
       if (engine === 'truth_dare' && kd == null) return errors.push(`${where}: tür Doğruluk ya da Cesaret olmalı.`);
       if (nOpt && opts.length !== nOpt) return errors.push(`${where}: tam ${nOpt} seçenek gerekli (${opts.length} bulundu).`);
+      if (isQuiz) {
+        const long = opts.findIndex((o) => o.length > QUIZ_OPTION_MAX);
+        if (long >= 0) return errors.push(`${where}: ${optLetter(long)} seçeneği en fazla ${QUIZ_OPTION_MAX} karakter olabilir.`);
+        if (new Set(opts.map((o) => o.toLocaleLowerCase('tr-TR'))).size !== opts.length) return errors.push(`${where}: seçenekler birbirinden farklı olmalı.`);
+        if (ci != null && Number.isNaN(ci)) return errors.push(`${where}: doğru cevap A, B, C, D ya da boş olmalı.`);
+      }
       if (tm != null && !(tm >= 5 && tm <= 3600)) return errors.push(`${where}: süre 5–3600 saniye olmalı.`);
-      items.push({ text: t, kind: kd, level: lv, mood: md, options: nOpt ? opts : [], timer_seconds: chal ? tm : null });
+      items.push({ text: t, kind: kd, level: lv, mood: md, options: nOpt ? opts : [], correct_index: isQuiz ? ci : null, timer_seconds: chal ? tm : null });
     };
     try {
       if (fmt === 'lines') {
         text.split(/\r?\n/).forEach((line, idx) => {
           if (!line.trim()) return;
           const parts = line.split('|').map((p) => p.trim());
-          add(idx + 1, { text: parts[0], options: parts.slice(1) });
+          if (isQuiz) {
+            // Soru | A | B | C | D | doğru(A–D veya boş)
+            if (parts.length > 6) { errors.push(`${idx + 1}. satır: en fazla 6 alan olabilir (soru, 4 seçenek, doğru cevap).`); return; }
+            add(idx + 1, { text: parts[0], options: parts.slice(1, 5), correct_index: parts[5] ?? null });
+          } else add(idx + 1, { text: parts[0], options: parts.slice(1) });
         });
       } else if (fmt === 'csv') {
         const rows = parseCsv(text);
@@ -546,22 +655,31 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
           const cols = hasHead ? {
             text: idx(['text', 'metin']), kind: idx(['kind', 'tur', 'tür']), level: idx(['level', 'seviye']), mood: idx(['mood', 'ruh_hali', 'ruh hali']),
             options: idx(['options', 'secenekler', 'seçenekler']), timer: idx(['timer_seconds', 'sure_sn', 'süre', 'sure']),
-          } : { text: 0, kind: -1, level: -1, mood: -1, options: 1, timer: -1 };
+            correct: idx(['correct_index', 'correct', 'dogru', 'doğru', 'dogru_cevap', 'doğru_cevap', 'doğru cevap']),
+            a: idx(['a']), b: idx(['b']), c: idx(['c']), d: idx(['d']),
+          } : { text: 0, kind: -1, level: -1, mood: -1, options: 1, timer: -1, correct: isQuiz ? 2 : -1, a: -1, b: -1, c: -1, d: -1 };
           rows.slice(hasHead ? 1 : 0).forEach((r, i) => {
             const g = (k: number) => (k >= 0 ? r[k] : undefined);
-            add(i + (hasHead ? 2 : 1), { text: g(cols.text), kind: g(cols.kind), level: g(cols.level), mood: g(cols.mood), options: g(cols.options), timer_seconds: g(cols.timer) || undefined });
+            // Testlerde ayrı a/b/c/d sütunları varsa onları kullan
+            const abcd = [cols.a, cols.b, cols.c, cols.d];
+            const options = cols.options < 0 && abcd.every((k) => k >= 0) ? abcd.map((k) => g(k) ?? '') : g(cols.options);
+            add(i + (hasHead ? 2 : 1), { text: g(cols.text), kind: g(cols.kind), level: g(cols.level), mood: g(cols.mood), options, correct_index: g(cols.correct), timer_seconds: g(cols.timer) || undefined });
           });
         }
       } else if (text.trim()) {
         const j = JSON.parse(text);
         if (!Array.isArray(j)) throw new AppError('JSON bir dizi olmalı.');
-        j.forEach((x: unknown, i: number) => add(i + 1, typeof x === 'string' ? { text: x } : (x as Record<string, unknown>)));
+        j.forEach((x: unknown, i: number) => {
+          if (typeof x === 'string') return add(i + 1, { text: x });
+          const o = (x ?? {}) as Record<string, unknown>;
+          add(i + 1, { ...o, correct_index: o.correct_index ?? o.correct ?? o.dogru ?? null });
+        });
       }
     } catch (e) {
       errors.unshift(e instanceof AppError ? e.message : 'JSON ayrıştırılamadı: biçimi kontrol edin.');
     }
     return { items, errors };
-  }, [text, fmt, level, mood, kind, timer, engine, nOpt, chal]);
+  }, [text, fmt, level, mood, kind, timer, engine, nOpt, chal, isQuiz]);
 
   const run = async () => {
     if (!catId || !parsed.items.length) return;
@@ -580,17 +698,23 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
     } finally { setBusy(false); }
   };
 
-  const example = fmt === 'lines'
+  const example = isQuiz
+    ? fmt === 'lines'
+      ? 'İdeal bir cumartesi gecesi hangisi? | Evde film | Şehirde yemek | Arkadaşlarla buluşma | Plansız yolculuk |\nSevgililer Günü hangi tarihte kutlanır? | 14 Şubat | 14 Mart | 1 Mayıs | 21 Haziran | A'
+      : fmt === 'csv'
+        ? 'metin,seviye,ruh_hali,secenekler,dogru\n"Sevgililer Günü ne zaman?",0,eglenceli,"14 Şubat | 14 Mart | 1 Mayıs | 21 Haziran",A'
+        : '[\n  { "text": "Sevgililer Günü ne zaman?", "options": ["14 Şubat", "14 Mart", "1 Mayıs", "21 Haziran"], "correct": "A" },\n  { "text": "İdeal tatil?", "options": ["Sahil", "Dağ evi", "Metropol", "Kamp"], "correct": null }\n]'
+    : fmt === 'lines'
     ? (nOpt ? `Soru metni | 1. seçenek | 2. seçenek${nOpt === 4 ? ' | 3. seçenek | 4. seçenek' : ''}` : chal ? 'Partnerine üç farklı iltifat gönder.\nBir şarkıyı sadece mırıldanarak anlat.' : 'İlk buluşmamızda aklından ne geçti?\nSeni en çok heyecanlandıran özelliğim ne?')
     : fmt === 'csv'
       ? `metin,seviye,ruh_hali${engine === 'truth_dare' ? ',tur' : ''}${nOpt ? ',secenekler' : ''}${chal ? ',sure_sn' : ''}\n"Örnek metin",1,romantik${engine === 'truth_dare' ? ',cesaret' : ''}${nOpt ? ',"A | B"' : ''}${chal ? ',60' : ''}`
       : `[\n  "Sadece metin",\n  { "text": "Ayrıntılı kayıt", "level": 2, "mood": "cesur"${engine === 'truth_dare' ? ', "kind": "dare"' : ''}${nOpt ? ', "options": ["A", "B"]' : ''}${chal ? ', "timer_seconds": 60' : ''} }\n]`;
 
   return (
-    <Modal wide title="Toplu içe aktarma" sub="Seçilen kategoriye çok sayıda içerik ekleyin." onClose={onClose} busy={busy}
+    <Modal wide title="Toplu içe aktarma" sub={quizMode ? 'Seçilen teste çok sayıda soru ekleyin.' : 'Seçilen kategoriye çok sayıda içerik ekleyin.'} onClose={onClose} busy={busy}
       footer={<><Btn onClick={onClose} disabled={busy}>Vazgeç</Btn><Btn variant="primary" icon="upload" loading={busy} disabled={!parsed.items.length || !catId} onClick={run}>{num(parsed.items.length)} kaydı içe aktar</Btn></>}>
       <div className="form-grid">
-        <Field label="Kategori">
+        <Field label={quizMode ? 'Test' : 'Kategori'}>
           <select className="select" value={catId} onChange={(e) => setCatId(e.target.value)}>
             {games.map((g) => (
               <optgroup key={g.id} label={g.name}>
@@ -615,7 +739,7 @@ function ImportModal({ mode, games, cats, defaultCat, onClose, onDone }: { mode:
           </Field>
         )}
       </div>
-      <Field label="İçerik" hint={fmt === 'lines' ? (nOpt ? `Her satıra bir kayıt; seçenekleri “|” ile ayırın (tam ${nOpt} seçenek).` : 'Her satıra bir kayıt yazın.') : fmt === 'csv' ? 'İlk satır başlık olabilir: metin, seviye, ruh_hali, tur, secenekler (| ile ayrılmış), sure_sn.' : 'Metin dizisi ya da nesne dizisi.'}>
+      <Field label="İçerik" hint={isQuiz ? (fmt === 'lines' ? 'Her satıra bir soru: Soru | A | B | C | D | doğru (A–D; uyum testi için boş bırakın).' : fmt === 'csv' ? 'Başlıklar: metin, seviye, ruh_hali, secenekler (| ile 4 adet) ya da a, b, c, d sütunları, dogru (A–D veya boş).' : 'Nesne dizisi: text, options (4 metin), correct ("A"–"D", 0–3 ya da null), level, mood.') : fmt === 'lines' ? (nOpt ? `Her satıra bir kayıt; seçenekleri “|” ile ayırın (tam ${nOpt} seçenek).` : 'Her satıra bir kayıt yazın.') : fmt === 'csv' ? 'İlk satır başlık olabilir: metin, seviye, ruh_hali, tur, secenekler (| ile ayrılmış), sure_sn.' : 'Metin dizisi ya da nesne dizisi.'}>
         <textarea className="textarea mono" style={{ minHeight: 200, fontSize: 13 }} value={text} onChange={(e) => setText(e.target.value)} placeholder={example} spellCheck={false} />
       </Field>
       <div className="row wrap" style={{ justifyContent: 'space-between' }}>

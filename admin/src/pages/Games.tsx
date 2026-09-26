@@ -91,7 +91,7 @@ export default function Games() {
                         </div>
                       </td>
                       <td className="m">{ENGINE_LABEL[g.engine]}</td>
-                      <td className="num">{g.engine === 'story' ? <Link to="/hikayeler" onClick={(e) => e.stopPropagation()}>Hikâyeler</Link> : <Link to={`/kategoriler?oyun=${g.id}`} onClick={(e) => e.stopPropagation()}>{num(g.categories?.[0]?.count ?? 0)}</Link>}</td>
+                      <td className="num">{g.engine === 'story' ? <Link to="/hikayeler" onClick={(e) => e.stopPropagation()}>Hikâyeler</Link> : g.engine === 'quiz' ? <Link to={`/testler?oyun=${g.id}`} onClick={(e) => e.stopPropagation()}>{num(g.categories?.[0]?.count ?? 0)} test</Link> : <Link to={`/kategoriler?oyun=${g.id}`} onClick={(e) => e.stopPropagation()}>{num(g.categories?.[0]?.count ?? 0)}</Link>}</td>
                       <td className="num">{num(g.rounds)}</td>
                       <td className="m nowrap">{g.duration_label || '—'}</td>
                       <td className="num">{stats.loading ? <span className="skel" style={{ display: 'inline-block', width: 40, height: 12 }} /> : s ? num(s.plays_30) : '—'}</td>
@@ -168,7 +168,7 @@ function GameModal({ game, existing, onClose, onSaved }: { game: Omit<Game, 'id'
   };
 
   return (
-    <Modal wide title={isNew ? 'Yeni oyun' : f.name || 'Oyunu düzenle'} sub={isNew ? 'Yeni oyun, mevcut 8 oyun motorundan birini kullanır.' : `Kısa ad: ${game.slug}`} onClose={onClose} busy={busy}
+    <Modal wide title={isNew ? 'Yeni oyun' : f.name || 'Oyunu düzenle'} sub={isNew ? `Yeni oyun, mevcut ${ENGINES.length} oyun motorundan birini kullanır.` : `Kısa ad: ${game.slug}`} onClose={onClose} busy={busy}
       footer={<><Btn onClick={onClose} disabled={busy}>Vazgeç</Btn><Btn variant="primary" icon="check" loading={busy} onClick={save}>{isNew ? 'Oluştur' : 'Kaydet'}</Btn></>}>
       <div className="form-grid">
         <Field label="Oyun adı"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={80} autoFocus /></Field>
@@ -177,6 +177,7 @@ function GameModal({ game, existing, onClose, onSaved }: { game: Omit<Game, 'id'
             {ENGINES.map((e) => <option key={e} value={e}>{ENGINE_LABEL[e]}</option>)}
           </select>
         </Field>
+        {isNew && f.engine === 'quiz' && <div className="full"><InfoNote>Test motorlu oyunlarda her kategori bir testtir. Testleri ve sorularını <b>Testler</b> bölümünden yönetebilirsiniz.</InfoNote></div>}
         <Field label="Açıklama" className="full"><textarea className="textarea" value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} style={{ minHeight: 72 }} /></Field>
         <Field label="Süre etiketi" hint="Ör. 10–15 dk"><input className="input" value={f.duration_label} onChange={(e) => set('duration_label', e.target.value)} maxLength={30} /></Field>
         <Field label="Tur sayısı" hint="1–50"><input className="input" type="number" min={1} max={50} value={f.rounds} onChange={(e) => set('rounds', Number(e.target.value))} /></Field>

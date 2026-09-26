@@ -13,6 +13,7 @@ export const NAV = [
   { to: '/oyunlar', icon: 'playing_cards', t: 'Oyunlar' },
   { to: '/sorular', icon: 'help', t: 'Sorular' },
   { to: '/gorevler', icon: 'bolt', t: 'Görevler' },
+  { to: '/testler', icon: 'quiz', t: 'Testler' },
   { to: '/hikayeler', icon: 'movie', t: 'Hikâyeler' },
   { to: '/raporlar', icon: 'flag', t: 'Raporlar', badge: true },
   { to: '/abonelikler', icon: 'workspace_premium', t: 'Abonelikler' },

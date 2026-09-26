@@ -99,7 +99,7 @@ export default function Categories() {
                   </Empty></td></tr>
                 ) : rows.map((c) => {
                   const g = gmap[c.game_id];
-                  const qPath = g?.engine === 'challenges' ? '/gorevler' : '/sorular';
+                  const qPath = g?.engine === 'quiz' ? `/testler/${c.id}` : `${g?.engine === 'challenges' ? '/gorevler' : '/sorular'}?kategori=${c.id}`;
                   return (
                     <tr key={c.id} className={perms.content ? 'click' : ''} onClick={() => perms.content && setEdit(c)}>
                       <td>
@@ -109,13 +109,13 @@ export default function Categories() {
                         </div>
                       </td>
                       <td className="m">{g ? <>{g.name}<div className="tag">{ENGINE_LABEL[g.engine]}</div></> : '—'}</td>
-                      <td className="num"><Link to={`${qPath}?kategori=${c.id}`} onClick={(e) => e.stopPropagation()}>{num(count(c))}</Link></td>
+                      <td className="num"><Link to={qPath} onClick={(e) => e.stopPropagation()}>{num(count(c))}</Link></td>
                       <td className="m">{num(c.sort)}</td>
                       <td><div className="row" style={{ gap: 6 }}>{c.is_active ? <Badge tone="ok">AKTİF</Badge> : <Badge tone="mute">PASİF</Badge>}{c.is_premium && <Badge tone="pro">PREMIUM</Badge>}</div></td>
                       <td className="act">
                         {perms.content && <RowMenu items={[
                           { label: 'Düzenle', icon: 'edit', onClick: () => setEdit(c) },
-                          { label: 'Soruları gör', icon: 'list', onClick: () => navigate(`${qPath}?kategori=${c.id}`) },
+                          { label: 'Soruları gör', icon: 'list', onClick: () => navigate(qPath) },
                           { label: c.is_active ? 'Pasife al' : 'Aktifleştir', icon: c.is_active ? 'visibility_off' : 'visibility', onClick: () => toggle(c, 'is_active') },
                           { label: c.is_premium ? 'Ücretsiz yap' : 'Premium yap', icon: 'workspace_premium', onClick: () => toggle(c, 'is_premium') },
                           'sep',
@@ -135,7 +135,9 @@ export default function Categories() {
   );
 }
 
-function CategoryModal({ cat, games, onClose, onSaved }: { cat: Omit<Category, 'id'> & { id?: string }; games: GameLite[]; onClose: () => void; onSaved: () => void }) {
+/** Kategori oluşturma/düzenleme. `test` açıksa etiketler “test” olarak gösterilir (Testler bölümü). */
+export function CategoryModal({ cat, games, onClose, onSaved, test }: { cat: Omit<Category, 'id'> & { id?: string }; games: GameLite[]; onClose: () => void; onSaved: (id: string) => void; test?: boolean }) {
+  const noun = test ? 'Test' : 'Kategori';
   const [f, setF] = useState(cat);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -146,7 +148,7 @@ function CategoryModal({ cat, games, onClose, onSaved }: { cat: Omit<Category, '
   const save = async () => {
     setErr(null);
     if (!f.game_id) return setErr('Bir oyun seçin.');
-    if (f.name.trim().length < 2) return setErr('Kategori adı en az 2 karakter olmalı.');
+    if (f.name.trim().length < 2) return setErr(`${noun} adı en az 2 karakter olmalı.`);
     if (!/^#[0-9a-fA-F]{6}$/.test(f.color)) return setErr('Renk #RRGGBB biçiminde olmalı.');
     setBusy(true);
     const payload = {
@@ -154,15 +156,16 @@ function CategoryModal({ cat, games, onClose, onSaved }: { cat: Omit<Category, '
       is_premium: f.is_premium, is_active: f.is_active, sort: Math.round(f.sort) || 0,
     };
     try {
-      if (isNew) unwrap(await supabase.from('categories').insert(payload).select('id').single());
+      let id = cat.id ?? '';
+      if (isNew) id = (unwrap(await supabase.from('categories').insert(payload).select('id').single()) as { id: string }).id;
       else mustAffect(await supabase.from('categories').update(payload).eq('id', cat.id!).select('id'));
-      toast.success(isNew ? 'Kategori oluşturuldu.' : 'Kategori kaydedildi.');
-      onSaved();
+      toast.success(isNew ? `${noun} oluşturuldu.` : `${noun} kaydedildi.`);
+      onSaved(id);
     } catch (e) { toast.error(e); } finally { setBusy(false); }
   };
 
   return (
-    <Modal wide title={isNew ? 'Yeni kategori' : 'Kategoriyi düzenle'} onClose={onClose} busy={busy}
+    <Modal wide title={isNew ? (test ? 'Yeni test' : 'Yeni kategori') : test ? 'Testi düzenle' : 'Kategoriyi düzenle'} sub={test ? 'Her test, test motorlu bir oyunun kategorisidir.' : undefined} onClose={onClose} busy={busy}
       footer={<><Btn onClick={onClose} disabled={busy}>Vazgeç</Btn><Btn variant="primary" icon="check" loading={busy} onClick={save}>{isNew ? 'Oluştur' : 'Kaydet'}</Btn></>}>
       <div className="form-grid">
         <Field label="Oyun">
@@ -170,13 +173,13 @@ function CategoryModal({ cat, games, onClose, onSaved }: { cat: Omit<Category, '
             {games.map((g) => <option key={g.id} value={g.id}>{g.name} · {ENGINE_LABEL[g.engine]}</option>)}
           </select>
         </Field>
-        <Field label="Kategori adı"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={60} autoFocus /></Field>
+        <Field label={`${noun} adı`}><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={60} autoFocus /></Field>
         <Field label="Açıklama" className="full"><textarea className="textarea" value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={240} style={{ minHeight: 72 }} /></Field>
         <IconField label="Simge" value={f.icon} onChange={(v) => set('icon', v)} />
         <ColorField label="Renk" value={f.color} onChange={(v) => set('color', v)} />
         <Field label="Sıra" hint="Küçük değer önce gösterilir"><input className="input" type="number" value={f.sort} onChange={(e) => set('sort', Number(e.target.value))} /></Field>
         <div className="full col" style={{ gap: 4 }}>
-          <ToggleRow label="Aktif" sub="Pasif kategoriler uygulamada görünmez." on={f.is_active} onChange={(v) => set('is_active', v)} />
+          <ToggleRow label="Aktif" sub={test ? 'Pasif testler uygulamada görünmez.' : 'Pasif kategoriler uygulamada görünmez.'} on={f.is_active} onChange={(v) => set('is_active', v)} />
           <ToggleRow label="Premium" sub="Yalnızca premium çiftler açabilir." on={f.is_premium} onChange={(v) => set('is_premium', v)} />
         </div>
       </div>

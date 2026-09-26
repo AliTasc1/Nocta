@@ -9,9 +9,10 @@ Nocta çift oyunları uygulamasının web yönetim paneli. Vite + React 18 + Typ
 | Genel Bakış | Günlük göstergeler (düne göre değişim), 30 günlük oyun grafiği, oyun dağılımı, son raporlar |
 | Kullanıcılar | Arama, filtreler (Tümü/Aktif/Askıda/Premium/Partnersiz), askıya alma, silme (yalnızca sahip) |
 | Çiftler | Flört seviyesi, oyun sayısı, son aktivite, premium verme/kaldırma, bağlantıyı sonlandırma |
-| Oyunlar | Oyunları düzenleme, 8 oyun motorundan birini kullanan yeni oyun oluşturma, oynanma istatistikleri |
+| Oyunlar | Oyunları düzenleme, 9 oyun motorundan birini (Test dahil) kullanan yeni oyun oluşturma, oynanma istatistikleri |
 | Kategoriler | Her oyun için sınırsız kategori, soru sayıları, silmede soru sayısını gösteren onay |
-| Sorular / Görevler | Filtreler, toplu işlemler, motora göre değişen form, canlı önizleme, CSV dışa aktarma, toplu içe aktarma (satır/CSV/JSON) |
+| Sorular / Görevler | Filtreler (motor filtresi dahil), toplu işlemler, motora göre değişen form, canlı önizleme, CSV dışa aktarma, toplu içe aktarma (satır/CSV/JSON) |
+| Testler | 4 seçenekli testler: test listesi (soru sayısı, tür özeti, premium/aktif), yeni test, düzenleme/silme, her testin soruları |
 | Hikâyeler | Bölüm sütunlarında sahne ve seçim düzenleyicisi, seçim yüzdeleri, yapı doğrulaması |
 | Raporlar | Durum/öncelik filtreleri, ayrıntı paneli, bildirilen mesaj, not, kullanıcıyı askıya alma |
 | Abonelikler | Özet göstergeler (aylık yinelenen gelir dahil), elle premium verme, iptal ve sonlandırma |
@@ -20,6 +21,17 @@ Nocta çift oyunları uygulamasının web yönetim paneli. Vite + React 18 + Typ
 | Ayarlar | Uygulama ayarları, yöneticiler ve roller, şifre değiştirme |
 
 Rol bazlı erişim: **Sahip** her şeyi yapar. **İçerik editörü** içerikleri ve uygulama ayarlarını yönetir. **Moderatör** raporları ve kullanıcıları yönetir. **Destek** raporlara ve aboneliklere bakar. Panel yetkisi olmayan işlemleri gizler; asıl yetki kontrolünü veritabanı (RLS) yapar.
+
+## Testler
+
+“Test (4 seçenek)” motorunu kullanan oyunlarda (ör. `quiz` kısa adlı **Çift Testleri**) her kategori bir testtir. **Testler** bölümü bu kategorileri listeler; **Yeni test** varsayılan olarak `quiz` oyununa eklenir (birden fazla test oyunu varsa seçilebilir). Yeni test oyunları **Oyunlar → Yeni oyun** ekranında motor olarak “Test (4 seçenek)” seçilerek oluşturulur.
+
+- Her soruda A, B, C, D olmak üzere **4 seçenek zorunludur** (en fazla 80 karakter, birbirinden farklı).
+- **Doğru cevap**: “Yok (uyum testi)” seçilirse partnerler aynı şıkkı seçmeye çalışır; A–D seçilirse bilgi sorusudur ve doğru cevap puanlanır (`questions.correct_index`, 0–3 ya da boş).
+- Test türü özeti: tüm sorular doğru cevaplıysa **Bilgi testi**, hiçbiri değilse **Uyum testi**, aksi halde **Karışık**.
+- Toplu içe aktarma (satır satır): `Soru | A | B | C | D | doğru` — doğru alanı A–D ya da boş (uyum). CSV'de `secenekler` (| ile) veya `a,b,c,d` sütunları ve `dogru` sütunu; JSON'da `options` ve `correct` (`"A"`–`"D"`, 0–3 ya da `null`).
+- CSV dışa aktarma seçenekleri (`secenekler` ve ayrı `a`–`d` sütunları) ve doğru cevabı (`dogru`) içerir.
+- Test soruları **Sorular** bölümünde de “Test (4 seçenek)” motor filtresiyle görülebilir.
 
 ## Kurulum
 
