@@ -36,9 +36,32 @@ function LinkRow({ icon, iconColor = colors.blush, title, value, onPress }: { ic
   );
 }
 
+/** Tanıtım ödülü: bilerek sade ve küçük tutulan satır */
+function PromoRow({ status, days, onPress }: { status: string | null; days: number; onPress: () => void }) {
+  const badge = status === 'pending' ? 'İnceleniyor' : status === 'approved' ? 'Onaylandı' : status === 'rejected' ? 'Onaylanmadı' : null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Ödül kazan. Tanıt, ${days} gün Premium kazan${badge ? `. Durum: ${badge}` : ''}`}
+      onPress={onPress}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.line, opacity: pressed ? 0.75 : 1 })}
+    >
+      <Icon name="redeem" size={20} color={colors.mist} />
+      <View style={{ flex: 1 }}>
+        <T v="title" style={{ fontSize: 14, lineHeight: 19 }} numberOfLines={1}>Ödül kazan</T>
+        <T v="caption" style={{ fontSize: 11.5 }} numberOfLines={1}>{`Tanıt, ${days} gün Premium kazan`}</T>
+      </View>
+      {badge ? <T v="caption" numberOfLines={1} style={{ fontSize: 11.5 }}>{badge}</T> : null}
+      <Icon name="chevron_right" size={20} color={colors.mute} />
+    </Pressable>
+  );
+}
+
 export default function Profile() {
-  const { profile, partner, couple, isPremium, unreadNotifications } = useApp();
-  const { achievements, gameById } = useContent();
+  const { userId, profile, partner, couple, isPremium, unreadNotifications } = useApp();
+  const { achievements, gameById, settings } = useContent();
+  const promoEnabled = settings.promo_enabled !== false && settings.promo_enabled !== 'false';
+  const [promoStatus, setPromoStatus] = useState<string | null>(null);
   const [stats, setStats] = useState<{ games: number; badges: number; favorite: { name: string; n: number } | null }>({ games: 0, badges: 0, favorite: null });
   const active = couple?.status === 'active' && !!partner;
 
@@ -60,10 +83,18 @@ export default function Profile() {
     setStats({ games: rows.length, badges: b.count ?? 0, favorite: fav });
   }, [cid, gameById]);
 
+  // Tanıtım ödülü başvurusu (varsa durumunu satırda göster)
+  const loadPromo = useCallback(async () => {
+    if (!userId || !promoEnabled) return setPromoStatus(null);
+    const { data } = await supabase.from('promo_submissions').select('status').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    setPromoStatus((data as { status?: string } | null)?.status ?? null);
+  }, [userId, promoEnabled]);
+
   useFocusEffect(
     useCallback(() => {
       load().catch(() => {});
-    }, [load]),
+      loadPromo().catch(() => {});
+    }, [load, loadPromo]),
   );
 
   const lv = flirtLevel(couple?.xp ?? 0);
@@ -137,6 +168,9 @@ export default function Profile() {
         <LinkRow icon="workspace_premium" iconColor={colors.irisSoft} title="Abonelik" value={isPremium ? 'Premium' : 'Ücretsiz'} onPress={() => router.push('/premium')} />
         <LinkRow icon="settings" iconColor={colors.mist} title="Ayarlar" onPress={() => router.push('/settings')} />
       </View>
+      {promoEnabled && (!isPremium || promoStatus) ? (
+        <PromoRow status={promoStatus} days={Number(settings.promo_days) > 0 ? Number(settings.promo_days) : 30} onPress={() => router.push('/promo')} />
+      ) : null}
       {!active ? (
         <LinkRow icon="person_add" title="Partnerini davet et" onPress={() => router.push('/invite')} />
       ) : null}

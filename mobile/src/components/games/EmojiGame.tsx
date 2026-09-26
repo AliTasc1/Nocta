@@ -7,7 +7,7 @@ import type { Question } from '@/lib/types';
 import { colors, fonts } from '@/theme';
 import { Burst, CONFETTI, HEARTS } from './Burst';
 import { ScoreStrip } from './Quiz';
-import { GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useReducedMotion, type Player } from './shared';
+import { ChoiceGrid, GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const MAX_OPTIONS = 6;
@@ -43,12 +43,12 @@ function glyphCount(s: string) {
 
 /**
  * 16 · Emojilerle Anlat
- * Soru metni + emoji şıkları (2 sütunlu büyük kutular). İki partner de kendi telefonunda gizlice seçer.
+ * Soru metni + emoji şıkları (2 sütunlu, kareye yakın büyük kutular). İki partner de kendi telefonunda gizlice seçer.
  * `correct_index` doluysa doğru emoji açılır, her partnerin sonucu animasyonla gösterilir;
  * boşsa eşleşme modu (aynı emoji = eşleşme). Cevap biçimi: `{ choice: "<indeks>" }`.
  */
 export function EmojiGame({ g, onClose }: EngineProps) {
-  const { s: sz, compact, width: winW } = useCompact();
+  const { s: sz, compact } = useCompact();
   const session = g.session!;
   const r = session.current_index;
   const qid = session.question_ids[r];
@@ -99,12 +99,14 @@ export function EmojiGame({ g, onClose }: EngineProps) {
     g.submitAnswer({ choice: String(i) }, { round: r, questionId: qid });
   };
 
-  // Izgara ölçüsü: 2 sütun; 5–6 şıkta satırlar biraz basıklaşır
-  // Ölçüm gelene dek pencere genişliğinden tahmin (GameLayout yatay dolgusu 20+20)
-  const [measuredW, setGridW] = useState(0);
-  const gridW = measuredW > 0 ? measuredW : Math.max(0, winW - 40);
-  const tileW = gridW > 0 ? (gridW - 10) / 2 : 0;
-  const tileH = tileW * (opts.length > 4 ? (compact ? 0.6 : 0.72) : compact ? 0.74 : 0.9);
+  // Izgara: 2 sütun, açık satırlar (2 → yan yana, 3 → 2 + 1, 4 → 2×2, 5–6 → 3 satır).
+  // Ölçüler pencere boyutundan kesin sayılarla hesaplanır (onLayout beklenmez); kutular kareye
+  // yakın, kısa ekranda yükseklik ızgara + soru + alt buton sığacak şekilde sınırlanır.
+  const gap = 10;
+  const grid = useChoiceGrid({ count: opts.length, gap, reserve: compact ? 320 : 380, maxCols: 2 });
+  const tileW = grid.colW;
+  const tileH = Math.floor(Math.max(80, Math.min(tileW * 0.95, grid.rowH)));
+  const celebrateIdx = !revealed ? null : isKnowledge ? (iRight || theyRight ? correct : null) : matched && mine != null ? Number(mine) : null;
 
   let resTitle = '';
   let resColor: string = colors.blush;
@@ -178,36 +180,38 @@ export function EmojiGame({ g, onClose }: EngineProps) {
           <TypingDots />
         </View>
       ) : (
-        <View onLayout={(e) => setGridW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, zIndex: 2 }}>
-          {tileW > 0
-            ? opts.map((t, i) => {
-                const k = String(i);
-                const who: Player[] = [];
-                if (mine === k) who.push(g.me);
-                if (revealed && theirs === k) who.push(g.partner);
-                let state: TileState = 'idle';
-                if (!revealed) state = mine === k ? 'selected' : mine != null ? 'dim' : 'idle';
-                else if (isKnowledge) state = i === correct ? 'correct' : who.length ? 'wrong' : 'dim';
-                else state = who.length ? (matched ? 'match' : mine === k ? 'selected' : 'partner') : 'dim';
-                const celebrate = revealed && ((isKnowledge && i === correct && (iRight || theyRight)) || (!isKnowledge && matched && mine === k));
-                return (
-                  <EmojiTile
-                    key={`${r}-${i}`}
-                    index={i}
-                    emoji={t}
-                    state={state}
-                    who={who}
-                    width={tileW}
-                    height={tileH}
-                    celebrate={celebrate ? `${r}-${i}` : null}
-                    burstEmojis={isKnowledge ? CONFETTI : HEARTS}
-                    disabled={mine != null}
-                    onPress={() => pick(i)}
-                  />
-                );
-              })
-            : null}
-        </View>
+        <ChoiceGrid
+          count={opts.length}
+          cols={grid.cols}
+          gap={gap}
+          raise={celebrateIdx}
+          renderItem={(i) => {
+            const t = opts[i];
+            const k = String(i);
+            const who: Player[] = [];
+            if (mine === k) who.push(g.me);
+            if (revealed && theirs === k) who.push(g.partner);
+            let state: TileState = 'idle';
+            if (!revealed) state = mine === k ? 'selected' : mine != null ? 'dim' : 'idle';
+            else if (isKnowledge) state = i === correct ? 'correct' : who.length ? 'wrong' : 'dim';
+            else state = who.length ? (matched ? 'match' : mine === k ? 'selected' : 'partner') : 'dim';
+            return (
+              <EmojiTile
+                key={`${r}-${i}`}
+                index={i}
+                emoji={t}
+                state={state}
+                who={who}
+                width={tileW}
+                height={tileH}
+                celebrate={celebrateIdx === i ? `${r}-${i}` : null}
+                burstEmojis={isKnowledge ? CONFETTI : HEARTS}
+                disabled={mine != null}
+                onPress={() => pick(i)}
+              />
+            );
+          }}
+        />
       )}
 
       <View style={{ marginTop: 'auto', alignItems: 'center', gap: 8, minHeight: 56, justifyContent: 'flex-end', paddingTop: 4 }}>
@@ -325,7 +329,8 @@ function EmojiTile({
   const iconColor = state === 'correct' ? colors.success : state === 'wrong' ? colors.error : colors.rose;
 
   const glyphs = glyphCount(emoji);
-  const fontSize = Math.max(22, Math.min(42, (width - 28) / (glyphs * 1.18), height * 0.5));
+  // Emoji boyutu kutuya göre ölçeklenir: tek emoji büyük, çoklu emoji genişliğe sığacak kadar
+  const fontSize = Math.round(Math.max(22, Math.min(64, (width - 24) / (glyphs * 1.4), height * 0.46)));
   const a11yState = state === 'correct' ? ', doğru cevap' : state === 'wrong' ? ', yanlış' : '';
   const a11yWho = who.length ? `, seçen: ${who.map((p) => p.name).join(' ve ')}` : '';
 
@@ -352,7 +357,7 @@ function EmojiTile({
       >
         {gradient ? <LinearGradient colors={['#6B1E38', colors.velvet]} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 0.9 }} style={StyleSheet.absoluteFill} /> : null}
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(240,80,90,.55)', opacity: flash }]} />
-        <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize, lineHeight: fontSize * 1.25, textAlign: 'center', paddingHorizontal: 8 }}>
+        <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontSize, lineHeight: fontSize * 1.25, textAlign: 'center', paddingHorizontal: 8 }}>
           {emoji}
         </Text>
         {icon ? (

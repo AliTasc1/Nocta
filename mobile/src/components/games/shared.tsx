@@ -97,6 +97,53 @@ export function useCompact() {
   return { compact, tiny, height, width, s: (big: number, small: number) => (compact ? small : big) };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Seçenek ızgarası (Kart Seç, Emojilerle Anlat)
+// ─────────────────────────────────────────────────────────────
+/** GameLayout içerik alanının yatay dolgusu (her iki yanda) */
+export const GAME_PAD = 20;
+
+/**
+ * Izgara ölçüleri — onLayout'a bağlı değil, ilk render'da kesin sayılarla hesaplanır.
+ * İçerik genişliği = pencere − güvenli alan − 2×dolgu (tablette `maxW` ile sınırlı).
+ * Hücre genişliği tam sayıya AŞAĞI yuvarlanır: satır toplamı hiçbir zaman kapsayıcıyı
+ * aşmaz (Yoga'nın piksel yuvarlaması yüzünden ikinci hücrenin alt satıra düşmesi engellenir).
+ * `reserve`: ızgara dışındaki başlık/soru/alt buton vb. için ayrılan yaklaşık yükseklik.
+ */
+export function useChoiceGrid({ count, gap, reserve, maxCols = 2, maxW = 560 }: { count: number; gap: number; reserve: number; maxCols?: number; maxW?: number }) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const contentW = Math.max(0, Math.min(maxW, width - insets.left - insets.right - GAME_PAD * 2));
+  const cols = count <= 1 ? 1 : Math.min(maxCols, count >= 5 && width >= 600 ? 3 : 2);
+  const rows = Math.max(1, Math.ceil(count / cols));
+  const colW = Math.max(0, Math.floor((contentW - gap * (cols - 1)) / cols));
+  // Tüm satırların (yaklaşık) kaydırmasız sığması için satır başına düşen yükseklik
+  const budget = height - insets.top - insets.bottom - reserve;
+  const rowH = Math.floor((budget - gap * (rows - 1)) / rows);
+  return { cols, rows, colW, rowH, contentW };
+}
+
+/**
+ * Seçenekleri açık satırlar halinde dizer (flexWrap kullanılmaz): 2 → yan yana,
+ * 3 → 2 + 1 (sonuncu ortada), 4 → 2×2, 5–6 → 2 sütun.
+ * `raise`: kutlama patlaması (Burst) sonraki satırların altında kalmasın diye öne alınan hücre.
+ */
+export function ChoiceGrid({ count, cols, gap, raise, renderItem }: { count: number; cols: number; gap: number; raise?: number | null; renderItem: (i: number) => React.ReactNode }) {
+  const rows: number[][] = [];
+  for (let s = 0; s < count; s += cols) rows.push(Array.from({ length: Math.min(cols, count - s) }, (_, k) => s + k));
+  return (
+    <View style={{ gap, zIndex: 2, alignSelf: 'center' }}>
+      {rows.map((row, ri) => (
+        <View key={ri} style={{ flexDirection: 'row', justifyContent: 'center', gap, zIndex: raise != null && row.includes(raise) ? 3 : 1 }}>
+          {row.map((i) => (
+            <React.Fragment key={i}>{renderItem(i)}</React.Fragment>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** finish_session sonucunu sonuç ekranına taşımak için bellek içi önbellek */
 export type FinishResult = {
   xp?: number;

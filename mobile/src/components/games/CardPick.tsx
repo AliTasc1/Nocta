@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Icon } from '@/components/ui';
 import { colors, fonts } from '@/theme';
 import { Burst, HEARTS } from './Burst';
-import { GameLayout, GameTopBar, haptic, mediaOf, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useReducedMotion, type Player } from './shared';
+import { ChoiceGrid, GameLayout, GameTopBar, haptic, mediaOf, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const MAX_CARDS = 6;
@@ -33,7 +33,6 @@ const choiceOf = (a: { answer?: Record<string, any> } | undefined) => (a?.answer
  */
 export function CardPick({ g, onClose }: EngineProps) {
   const { s: sz, compact } = useCompact();
-  const { width: winW } = useWindowDimensions();
   const session = g.session!;
   const r = session.current_index;
   const qid = session.question_ids[r];
@@ -69,14 +68,14 @@ export function CardPick({ g, onClose }: EngineProps) {
     g.submitAnswer({ choice: String(i) }, { round: r, questionId: qid });
   };
 
-  // Izgara: 2 sütun; geniş ekranda 6 kart → 3 sütun. Portre 3:4 (küçük ekranda biraz basık)
-  // Ölçüm gelene dek pencere genişliğinden tahmin (GameLayout yatay dolgusu 20+20)
-  const [measuredW, setGridW] = useState(0);
-  const gridW = measuredW > 0 ? measuredW : Math.max(0, winW - 40);
-  const cols = opts.length >= 5 && winW >= 600 ? 3 : 2;
+  // Izgara: 2 sütun (geniş ekranda 5–6 kart → 3). Ölçüler pencere boyutundan kesin sayılarla
+  // hesaplanır (onLayout beklenmez). Kart portre (~3:4); kısa ekranda yükseklik, ızgara soru ve
+  // alt butonla birlikte sığacak şekilde sınırlanır, genişlik de oranı korumak için daralır.
   const gap = 12;
-  const cardW = gridW > 0 ? (gridW - gap * (cols - 1)) / cols : 0;
-  const cardH = cardW * (compact ? 1.2 : 4 / 3);
+  const grid = useChoiceGrid({ count: opts.length, gap, reserve: compact ? 300 : 350, maxCols: 3 });
+  const cardH = Math.floor(Math.min(grid.colW * (4 / 3), Math.max(128, grid.rowH)));
+  const cardW = Math.min(grid.colW, Math.floor(cardH / 1.1));
+  const celebrateIdx = revealed && matched && mine != null ? Number(mine) : null;
 
   let resTitle = '';
   let resSub = '';
@@ -140,41 +139,44 @@ export function CardPick({ g, onClose }: EngineProps) {
           <TypingDots />
         </View>
       ) : (
-        <View onLayout={(e) => setGridW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap, zIndex: 2 }}>
-          {cardW > 0
-            ? opts.map((t, i) => {
-                const k = String(i);
-                const who: Player[] = [];
-                if (mine === k) who.push(g.me);
-                if (revealed && theirs === k) who.push(g.partner);
-                let state: CardState = 'idle';
-                if (!revealed) state = mine === k ? 'selected' : mine != null ? 'dim' : 'idle';
-                else state = who.length ? (matched ? 'match' : mine === k ? 'selected' : 'partner') : 'dim';
-                // Açılışta partnerin kartı çevrilir (aynıysa ortak kart)
-                const flip = revealed && theirs === k;
-                return (
-                  <PickCard
-                    key={`${r}-${i}`}
-                    index={i}
-                    title={t}
-                    image={media[i] ?? ''}
-                    state={state}
-                    who={who}
-                    flip={flip}
-                    celebrate={revealed && matched && mine === k ? `${r}-${i}` : null}
-                    width={cardW}
-                    height={cardH}
-                    disabled={mine != null}
-                    onPress={() => pick(i)}
-                    onPreview={() => {
-                      haptic.light();
-                      setPreview(i);
-                    }}
-                  />
-                );
-              })
-            : null}
-        </View>
+        <ChoiceGrid
+          count={opts.length}
+          cols={grid.cols}
+          gap={gap}
+          raise={celebrateIdx}
+          renderItem={(i) => {
+            const t = opts[i];
+            const k = String(i);
+            const who: Player[] = [];
+            if (mine === k) who.push(g.me);
+            if (revealed && theirs === k) who.push(g.partner);
+            let state: CardState = 'idle';
+            if (!revealed) state = mine === k ? 'selected' : mine != null ? 'dim' : 'idle';
+            else state = who.length ? (matched ? 'match' : mine === k ? 'selected' : 'partner') : 'dim';
+            // Açılışta partnerin kartı çevrilir (aynıysa ortak kart)
+            const flip = revealed && theirs === k;
+            return (
+              <PickCard
+                key={`${r}-${i}`}
+                index={i}
+                title={t}
+                image={media[i] ?? ''}
+                state={state}
+                who={who}
+                flip={flip}
+                celebrate={celebrateIdx === i ? `${r}-${i}` : null}
+                width={cardW}
+                height={cardH}
+                disabled={mine != null}
+                onPress={() => pick(i)}
+                onPreview={() => {
+                  haptic.light();
+                  setPreview(i);
+                }}
+              />
+            );
+          }}
+        />
       )}
 
       <View style={{ marginTop: 'auto', alignItems: 'center', gap: 4, minHeight: 56, justifyContent: 'flex-end', paddingTop: 4 }}>
@@ -291,8 +293,8 @@ function PickCard({
           </View>
         )}
         <LinearGradient colors={['rgba(12,8,11,0)', 'rgba(12,8,11,.55)', 'rgba(12,8,11,.92)']} locations={[0, 0.4, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: Math.max(72, height * 0.45) }} />
-        <View style={{ position: 'absolute', left: 12, right: 12, bottom: 12 }}>
-          <Text numberOfLines={2} maxFontSizeMultiplier={1.2} style={{ fontFamily: fonts.bold, fontSize: 15, lineHeight: 19, color: colors.pearl }}>
+        <View style={{ position: 'absolute', left: width < 130 ? 10 : 12, right: width < 130 ? 10 : 12, bottom: width < 130 ? 10 : 12 }}>
+          <Text numberOfLines={2} maxFontSizeMultiplier={1.2} style={{ fontFamily: fonts.bold, fontSize: width < 130 ? 13 : 15, lineHeight: width < 130 ? 17 : 19, color: colors.pearl }}>
             {title}
           </Text>
         </View>
