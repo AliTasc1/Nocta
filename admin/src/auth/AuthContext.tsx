@@ -10,6 +10,8 @@ type Status = 'loading' | 'signed_out' | 'checking' | 'admin' | 'denied' | 'inac
 export type Perms = {
   content: boolean; reports: boolean; subs: boolean; payments: boolean; admins: boolean;
   deleteUser: boolean; settings: boolean; moderateUsers: boolean;
+  /** Tanıtım ödülü başvurularını onaylama/reddetme (admin_review_promo) */
+  promo: boolean;
 };
 
 type Ctx = {
@@ -37,6 +39,7 @@ export function permsFor(role: Role | null): Perms {
     deleteUser: r === 'owner',
     settings: r === 'owner' || r === 'content',
     moderateUsers: !!r, // profiles/couples admin update: her aktif yönetici
+    promo: r === 'owner' || r === 'moderator' || r === 'support',
   };
 }
 

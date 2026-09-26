@@ -145,3 +145,19 @@ export const ICON_SUGGESTIONS = [
   'emoji_objects', 'music_note', 'flight', 'restaurant', 'bed', 'kiss', 'favorite_border', 'heart_plus',
 ];
 export const COLOR_SUGGESTIONS = ['#2A1530', '#3A1740', '#6B1E38', '#E7688A', '#F4B9C8', '#A88BF0', '#C9B8F7', '#7FD1AE', '#F2C27B', '#F07A7A', '#1F2A44', '#123A32'];
+
+// ── Tanıtım ödülleri ───────────────────────────────────────────
+export const PROMO_STATUS: Record<string, { t: string; tone: Tone }> = {
+  pending: { t: 'BEKLİYOR', tone: 'warn' },
+  approved: { t: 'ONAYLANDI', tone: 'ok' },
+  rejected: { t: 'REDDEDİLDİ', tone: 'bad' },
+};
+export const PROMO_PLATFORM: Record<string, { t: string; tone: Tone }> = {
+  tiktok: { t: 'TikTok', tone: 'pro' },
+  instagram: { t: 'Instagram', tone: 'rose' },
+  youtube: { t: 'YouTube', tone: 'bad' },
+};
+/** app_settings varsayılanları (sunucudaki admin_review_promo ile aynı). */
+export const PROMO_DEFAULTS = { enabled: true, days: 30, minHours: 24 };
+/** Tanıtım başvurusu incelendiğinde kenar çubuğu rozetini yenilemek için yayınlanan olay. */
+export const PROMO_CHANGED = 'nocta:promo-changed';

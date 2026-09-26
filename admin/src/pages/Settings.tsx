@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { mustAffect, unwrap, useLoad } from '../lib/data';
-import { LEVELS, ROLE_LABEL, ROLE_TONE, type Role } from '../lib/constants';
+import { LEVELS, PROMO_DEFAULTS, ROLE_LABEL, ROLE_TONE, type Role } from '../lib/constants';
 import { dateTime, initials, relTime } from '../lib/format';
 import { useAuth, type AdminRow } from '../auth/AuthContext';
 import { Badge, Btn, Empty, ErrorBox, Field, InfoNote, Modal, RowMenu, Skel, SkelRows, ToggleRow, useConfirm, useToast } from '../ui/ui';
@@ -15,9 +15,9 @@ type Form = {
 const ROLES: Role[] = ['owner', 'moderator', 'content', 'support'];
 const ROLE_DESC: Record<Role, string> = {
   owner: 'Her şey: yöneticiler, ödemeler, kullanıcı silme',
-  moderator: 'Raporlar, kullanıcı askıya alma, çift bağlantıları',
+  moderator: 'Raporlar, kullanıcı askıya alma, çift bağlantıları, tanıtım ödülleri',
   content: 'Oyunlar, kategoriler, sorular, hikâyeler, uygulama ayarları',
-  support: 'Raporlar, abonelikler ve premium tanımlama',
+  support: 'Raporlar, abonelikler, premium tanımlama ve tanıtım ödülleri',
 };
 
 const str = (v: unknown) => (v == null ? '' : typeof v === 'string' ? v : String(v));
@@ -26,7 +26,10 @@ export default function Settings() {
   return (
     <>
       <div className="grid-2" style={{ alignItems: 'start' }}>
-        <AppSettings />
+        <div className="section-stack">
+          <AppSettings />
+          <PromoSettings />
+        </div>
         <Account />
       </div>
       <Admins />
@@ -122,6 +125,77 @@ function AppSettings() {
               <input className="input" type="email" value={f.owner_email} onChange={(e) => set('owner_email', e.target.value)} />
             </Field>
           )}
+          {err && <InfoNote tone="bad">{err}</InfoNote>}
+          {canEdit && (
+            <div className="row wrap" style={{ justifyContent: 'flex-end' }}>
+              <Btn onClick={() => setF(initial)} disabled={!dirty || busy}>Geri al</Btn>
+              <Btn variant="primary" icon="save" loading={busy} disabled={!dirty} onClick={save}>Kaydet</Btn>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+type PromoForm = { promo_enabled: boolean; promo_days: string; promo_min_hours: string };
+const PROMO_KEYS = ['promo_enabled', 'promo_days', 'promo_min_hours'] as const;
+
+/** Tanıtım kampanyası: promo_enabled (bool), promo_days (gün), promo_min_hours (saat). */
+function PromoSettings() {
+  const { perms } = useAuth();
+  const toast = useToast();
+  const { data, error, loading, reload } = useLoad(async () => unwrap(await supabase.from('app_settings').select('*').in('key', PROMO_KEYS as unknown as string[])) as SettingRow[], []);
+  const map = useMemo(() => Object.fromEntries((data ?? []).map((r) => [r.key, r])), [data]);
+  const initial = useMemo<PromoForm>(() => ({
+    promo_enabled: map.promo_enabled ? map.promo_enabled.value === true || map.promo_enabled.value === 'true' : PROMO_DEFAULTS.enabled,
+    promo_days: str(map.promo_days?.value ?? PROMO_DEFAULTS.days),
+    promo_min_hours: str(map.promo_min_hours?.value ?? PROMO_DEFAULTS.minHours),
+  }), [map]);
+  const [f, setF] = useState<PromoForm>(initial);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { setF(initial); }, [initial]);
+  const set = <K extends keyof PromoForm>(k: K, v: PromoForm[K]) => setF((x) => ({ ...x, [k]: v }));
+  const dirty = JSON.stringify(f) !== JSON.stringify(initial);
+  const canEdit = perms.settings;
+
+  const save = async () => {
+    setErr(null);
+    const days = Number(f.promo_days.trim());
+    const hours = Number(f.promo_min_hours.trim());
+    if (!Number.isInteger(days) || days < 1 || days > 365) return setErr('Premium süresi 1–365 arasında tam sayı olmalı.');
+    if (!Number.isInteger(hours) || hours < 0 || hours > 720) return setErr('Yayında kalma süresi 0–720 saat arasında tam sayı olmalı.');
+    const upserts = [
+      { key: 'promo_enabled', value: f.promo_enabled, is_public: true },
+      { key: 'promo_days', value: days, is_public: true },
+      { key: 'promo_min_hours', value: hours, is_public: true },
+    ];
+    // Yalnızca değişenleri yaz
+    const changed = upserts.filter((u) => JSON.stringify(map[u.key]?.value) !== JSON.stringify(u.value) || !map[u.key]);
+    setBusy(true);
+    try {
+      if (changed.length) mustAffect(await supabase.from('app_settings').upsert(changed.map((c) => ({ ...c, updated_at: new Date().toISOString() })), { onConflict: 'key' }).select('key'));
+      toast.success('Kampanya ayarları kaydedildi.');
+      reload(true);
+    } catch (e) { toast.error(e); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="card">
+      <div className="card-h"><span className="card-t">Tanıtım kampanyası</span>{data && <span className="tag">{initial.promo_enabled ? 'AÇIK' : 'KAPALI'}</span>}</div>
+      {error ? <ErrorBox error={error} onRetry={() => reload()} /> : loading && !data ? <div className="col"><Skel h={44} /><Skel h={44} /></div> : (
+        <>
+          {!canEdit && <InfoNote tone="warn">Kampanya ayarlarını yalnızca sahip ve içerik editörleri değiştirebilir.</InfoNote>}
+          <ToggleRow label="Kampanya açık" sub="Kapalıyken uygulama yeni tanıtım başvurusu kabul etmez; mevcut başvurular incelenmeye devam eder." on={f.promo_enabled} onChange={(v) => set('promo_enabled', v)} disabled={!canEdit} />
+          <div className="form-grid">
+            <Field label="Verilecek Premium (gün)" hint="Onaylanan her başvuru için hediye abonelik süresi.">
+              <input className="input" inputMode="numeric" value={f.promo_days} onChange={(e) => set('promo_days', e.target.value)} disabled={!canEdit} placeholder="30" />
+            </Field>
+            <Field label="Yayında kalma süresi (saat)" hint="Video en az bu kadar süre yayında kalmalı.">
+              <input className="input" inputMode="numeric" value={f.promo_min_hours} onChange={(e) => set('promo_min_hours', e.target.value)} disabled={!canEdit} placeholder="24" />
+            </Field>
+          </div>
           {err && <InfoNote tone="bad">{err}</InfoNote>}
           {canEdit && (
             <div className="row wrap" style={{ justifyContent: 'flex-end' }}>

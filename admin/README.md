@@ -16,11 +16,23 @@ Nocta çift oyunları uygulamasının web yönetim paneli. Vite + React 18 + Typ
 | Hikâyeler | Bölüm sütunlarında sahne ve seçim düzenleyicisi, seçim yüzdeleri, yapı doğrulaması |
 | Raporlar | Durum/öncelik filtreleri, ayrıntı paneli, bildirilen mesaj, not, kullanıcıyı askıya alma |
 | Abonelikler | Özet göstergeler (aylık yinelenen gelir dahil), elle premium verme, iptal ve sonlandırma |
+| Tanıtım Ödülleri | Nocta'yı tanıtan video başvuruları: göstergeler, durum/platform filtreleri, arama, 24 saat geri sayımı, kanıt görselleri, onay (premium verme) ve ret |
 | Ödemeler | RevenueCat üzerinden gelen ödemeler, filtreler ve toplamlar |
 | Analitik | Etkin kullanıcılar, haftalık grafik, kohort ısı haritası, dönüşüm hunisi, oyun bazında tablo |
 | Ayarlar | Uygulama ayarları, yöneticiler ve roller, şifre değiştirme |
 
-Rol bazlı erişim: **Sahip** her şeyi yapar. **İçerik editörü** içerikleri ve uygulama ayarlarını yönetir. **Moderatör** raporları ve kullanıcıları yönetir. **Destek** raporlara ve aboneliklere bakar. Panel yetkisi olmayan işlemleri gizler; asıl yetki kontrolünü veritabanı (RLS) yapar.
+Rol bazlı erişim: **Sahip** her şeyi yapar. **İçerik editörü** içerikleri ve uygulama ayarlarını yönetir. **Moderatör** raporları, kullanıcıları ve tanıtım başvurularını yönetir. **Destek** raporlara, aboneliklere ve tanıtım başvurularına bakar. Panel yetkisi olmayan işlemleri gizler; asıl yetki kontrolünü veritabanı (RLS) yapar.
+
+## Tanıtım Ödülleri
+
+Kullanıcılar Nocta'yı TikTok, Instagram ya da YouTube'da tanıtan bir video paylaşır ve uygulamadan başvurur (`promo_submissions`: video linki, hesap adı, not, paylaşım zamanı ve özel **`promo-proofs`** deposuna yüklenen kanıt görselleri). Akış:
+
+1. **Başvuru** — Kampanya açıkken (`promo_enabled`) yalnızca Premium olmayan ve bekleyen/onaylanmış başka başvurusu olmayan kullanıcılar başvurabilir. Başvuru **Bekliyor** durumunda gelir; kenar çubuğundaki rozet bekleyen başvuru sayısını gösterir.
+2. **Bekleme** — Video en az `promo_min_hours` saat (varsayılan 24) yayında kalmalıdır. Listede “24 saat” sütunu kalan süreyi (“5s 12dk kaldı”) ya da ✓ **Doldu** bilgisini gösterir; “24 saati dolan & bekleyen” göstergesi onaya hazır başvuruları sayar.
+3. **İnceleme** — Satıra tıklayınca ayrıntı paneli açılır: **Linki aç** ile videonun hâlâ yayında olduğunu kontrol edin, kanıt görsellerini (kısa süreli imzalı adreslerle) büyüterek inceleyin.
+4. **Karar** — **Onayla — N gün Premium ver**, `admin_review_promo` fonksiyonunu çağırır: kullanıcıya `promo_days` gün (varsayılan 30) hediye abonelik tanımlanır ve bildirim gönderilir. Süre dolmadan onay düğmesi kapalıdır; gerekirse “24 saat dolmadan onayla” kutusu işaretlenerek erken onaylanabilir. **Reddet** için yönetici notu zorunludur; not kullanıcıya bildirim olarak gider. Reddedilen başvuru gerekirse sonradan onaylanabilir; onaylanan başvuru geri alınamaz (aboneliği **Abonelikler** bölümünden sonlandırabilirsiniz).
+
+Başvuruları **Sahip**, **Moderatör** ve **Destek** inceleyebilir; diğer roller yalnızca görüntüler. Kampanya ayarları **Ayarlar → Tanıtım kampanyası** kartındadır (sahip ve içerik editörü değiştirebilir): `promo_enabled` (açık/kapalı), `promo_days` (gün), `promo_min_hours` (saat). Kampanya kapatılınca yeni başvuru alınmaz, mevcut başvurular incelenmeye devam eder.
 
 ## Testler
 
@@ -135,6 +147,6 @@ Yönetici olmayan bir hesapla giriş yapılırsa panel “Bu hesabın yönetici 
 ## Notlar
 
 - İçerikte (oyun, kategori, soru, hikâye) yapılan her değişiklik veritabanı tetikleyicileriyle `content_version` değerini günceller. Mobil uygulama içeriği bu sayede otomatik olarak yeniden çeker.
-- Uygulama ayarları anahtarları: `free_max_level` (sayı 0–3), `support_email`, `min_app_version`, `announcement` (duyuru kapalıyken satır silinir), `price_monthly`, `price_yearly` (sayı, ₺), `owner_email` (herkese açık değil).
+- Uygulama ayarları anahtarları: `free_max_level` (sayı 0–3), `support_email`, `min_app_version`, `announcement` (duyuru kapalıyken satır silinir), `price_monthly`, `price_yearly` (sayı, ₺), `owner_email` (herkese açık değil), `promo_enabled`, `promo_days`, `promo_min_hours` (tanıtım kampanyası).
 - Sunucudaki `admin_analytics()` fonksiyonu hata verirse Analitik ve Oyunlar sayfaları aynı metrikleri yönetici yetkisiyle doğrudan tablolardan hesaplar ve bunu bir uyarıyla belirtir.
 - Tarayıcı desteği: güncel Chrome, Safari, Firefox ve Edge.

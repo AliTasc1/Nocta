@@ -2,11 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { supabase } from './lib/supabase';
-import { ROLE_LABEL } from './lib/constants';
+import { PROMO_CHANGED, ROLE_LABEL } from './lib/constants';
 import { initials, trUpper } from './lib/format';
 import { Icon, IconBtn } from './ui/ui';
 
-export const NAV = [
+type NavItem = { to: string; icon: string; t: string; badge?: 'reports' | 'promo'; crumb?: string };
+export const NAV: NavItem[] = [
   { to: '/', icon: 'space_dashboard', t: 'Genel Bakış' },
   { to: '/kullanicilar', icon: 'group', t: 'Kullanıcılar' },
   { to: '/ciftler', icon: 'favorite', t: 'Çiftler' },
@@ -15,8 +16,9 @@ export const NAV = [
   { to: '/gorevler', icon: 'bolt', t: 'Görevler' },
   { to: '/testler', icon: 'quiz', t: 'Testler' },
   { to: '/hikayeler', icon: 'movie', t: 'Hikâyeler' },
-  { to: '/raporlar', icon: 'flag', t: 'Raporlar', badge: true },
+  { to: '/raporlar', icon: 'flag', t: 'Raporlar', badge: 'reports' },
   { to: '/abonelikler', icon: 'workspace_premium', t: 'Abonelikler' },
+  { to: '/tanitim', icon: 'campaign', t: 'Tanıtım Ödülleri', badge: 'promo' },
   { to: '/odemeler', icon: 'payments', t: 'Ödemeler' },
   { to: '/analitik', icon: 'monitoring', t: 'Analitik' },
   { to: '/kategoriler', icon: 'edit_note', t: 'Kategoriler', crumb: 'İçerik Yönetimi' },
@@ -29,6 +31,8 @@ export function Layout() {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [openReports, setOpenReports] = useState<number>(0);
+  const [pendingPromo, setPendingPromo] = useState<number>(0);
+  const [promoTick, setPromoTick] = useState(0);
   const [q, setQ] = useState('');
 
   const current = NAV.find((n) => (n.to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(n.to))) ?? NAV[0];
@@ -43,6 +47,20 @@ export function Layout() {
       .then(({ count }) => { if (alive) setOpenReports(count ?? 0); });
     return () => { alive = false; };
   }, [loc.pathname, loc.search]);
+
+  // Bekleyen tanıtım başvurusu sayısı (kenar çubuğu rozeti)
+  useEffect(() => {
+    const on = () => setPromoTick((t) => t + 1);
+    window.addEventListener(PROMO_CHANGED, on);
+    return () => window.removeEventListener(PROMO_CHANGED, on);
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    supabase.from('promo_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      .then(({ count }) => { if (alive) setPendingPromo(count ?? 0); });
+    return () => { alive = false; };
+  }, [loc.pathname, loc.search, promoTick]);
+  const badgeCount = (b: NavItem['badge']) => (b === 'reports' ? openReports : b === 'promo' ? pendingPromo : 0);
 
   const search = (e: FormEvent) => {
     e.preventDefault();
@@ -61,7 +79,7 @@ export function Layout() {
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Icon n={n.icon} />{n.t}
-            {n.badge && openReports > 0 && <span className="nav-badge">{openReports > 99 ? '99+' : openReports}</span>}
+            {n.badge && badgeCount(n.badge) > 0 && <span className="nav-badge">{badgeCount(n.badge) > 99 ? '99+' : badgeCount(n.badge)}</span>}
           </NavLink>
         ))}
         <div className="side-foot">

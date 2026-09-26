@@ -20,6 +20,7 @@ const TestDetail = lazy(() => import('./pages/Tests').then((m) => ({ default: m.
 const Stories = lazy(() => import('./pages/Stories'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Subscriptions = lazy(() => import('./pages/Subscriptions'));
+const Promo = lazy(() => import('./pages/Promo'));
 const Payments = lazy(() => import('./pages/Payments'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -50,6 +51,7 @@ function Gate() {
           <Route path="hikayeler" element={<Suspense fallback={<PageFallback />}><Stories /></Suspense>} />
           <Route path="raporlar" element={<Suspense fallback={<PageFallback />}><Reports /></Suspense>} />
           <Route path="abonelikler" element={<Suspense fallback={<PageFallback />}><Subscriptions /></Suspense>} />
+          <Route path="tanitim" element={<Suspense fallback={<PageFallback />}><Promo /></Suspense>} />
           <Route path="odemeler" element={<Suspense fallback={<PageFallback />}><Payments /></Suspense>} />
           <Route path="analitik" element={<Suspense fallback={<PageFallback />}><Analytics /></Suspense>} />
           <Route path="kategoriler" element={<Suspense fallback={<PageFallback />}><Categories /></Suspense>} />
