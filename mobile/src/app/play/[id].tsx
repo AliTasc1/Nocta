@@ -46,27 +46,42 @@ export default function PlayScreen() {
     }
   }, [status, sessionId, isLeaving, toast]);
 
-  const { cancel } = g;
+  const { cancel, finish } = g;
+  const played = (g.session?.current_index ?? 0) > 0;
   const confirmLeave = useCallback(() => {
+    // Oturumlar artık kategorideki tüm soruları içeriyor; istenildiği an bitirilip kaydedilebilir
     ask({
       icon: 'logout',
-      tone: 'error',
-      title: 'Oyundan çıkılsın mı?',
-      desc: 'Oyun ikiniz için de sona erer. Buraya kadarki turlar puana sayılmaz.',
+      tone: played ? 'rose' : 'error',
+      title: played ? 'Oyunu bitirelim mi?' : 'Oyundan çıkılsın mı?',
+      desc: played
+        ? 'Buraya kadar oynadığınız turlar kaydedilir ve sonuç ekranına geçersiniz. Kalan sorular bir sonraki oyunda önce gelir.'
+        : 'Oyun ikiniz için de sona erer.',
       actions: [
+        ...(played
+          ? [
+              {
+                label: 'Bitir ve kaydet',
+                kind: 'primary' as const,
+                onPress: async () => {
+                  await finish();
+                },
+              },
+            ]
+          : []),
         {
-          label: 'Oyundan çık',
-          kind: 'danger',
+          label: played ? 'Kaydetmeden çık' : 'Oyundan çık',
+          kind: 'danger' as const,
           onPress: async () => {
             await cancel();
             navigated.current = true;
             router.replace('/');
           },
         },
-        { label: 'Oyuna devam et', kind: 'ghost' },
+        { label: 'Oyuna devam et', kind: 'ghost' as const },
       ],
     });
-  }, [ask, cancel]);
+  }, [ask, cancel, finish, played]);
 
   // Android geri tuşu: doğrudan çıkma, önce sor
   useFocusEffect(

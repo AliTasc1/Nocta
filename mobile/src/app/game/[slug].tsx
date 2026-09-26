@@ -129,7 +129,7 @@ export default function GameDetailScreen() {
         <T v="body">{game.description}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <MetaChip icon="schedule" text={game.duration_label} />
-          {game.engine !== 'story' ? <MetaChip icon="style" text={`${game.rounds} ${counted ? 'soru' : 'tur'}`} /> : <MetaChip icon="movie" text="Seçimli hikâye" />}
+          {game.engine !== 'story' ? <MetaChip icon="style" text={`${content.questionCount(game.id, category)} soru`} /> : <MetaChip icon="movie" text="Seçimli hikâye" />}
         </View>
       </TintCard>
 
@@ -176,7 +176,7 @@ export default function GameDetailScreen() {
             <View style={{ marginTop: 24 }}>
               <SectionTitle label={isQuiz ? 'TEST' : 'KATEGORİ'} title={isQuiz ? 'Test seç' : counted ? 'Kategori seç' : 'Bu gece hangisi?'} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                <CatChip label={isQuiz ? 'Karışık test' : 'Karışık'} icon="shuffle" active={category === null} onPress={() => setCategory(null)} count={counted ? content.questionCount(game.id) : undefined} />
+                <CatChip label={isQuiz ? 'Karışık test' : 'Karışık'} icon="shuffle" active={category === null} onPress={() => setCategory(null)} count={content.questionCount(game.id)} />
                 {cats.map((c) => {
                   const locked = c.is_premium && !isPremium;
                   return (
@@ -186,7 +186,7 @@ export default function GameDetailScreen() {
                       icon={locked ? 'lock' : c.icon}
                       active={category === c.id}
                       locked={locked}
-                      count={counted && !locked ? content.questionCount(game.id, c.id) : undefined}
+                      count={!locked ? content.questionCount(game.id, c.id) : undefined}
                       onPress={() => {
                         if (locked) {
                           showToast(isQuiz ? 'Bu test Nocta Premium ile açılır.' : 'Bu kategori Nocta Premium ile açılır.', 'info');

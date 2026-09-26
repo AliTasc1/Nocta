@@ -277,7 +277,8 @@ export function useGameSession(sessionId: string) {
     const st = session.state ?? {};
     if (game?.engine === 'truth_dare') {
       const pool = (st.truths?.length ?? 0) + (st.dares?.length ?? 0);
-      return Math.max(1, Math.min(game.rounds || 10, pool));
+      // Tur sınırı yok: havuzdaki tüm kartlar bitene kadar (ya da çift bitirene kadar) oynanır
+      return Math.max(1, pool);
     }
     if (game?.engine === 'story') return Number.POSITIVE_INFINITY;
     return session.question_ids?.length ?? 0;

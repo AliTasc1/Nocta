@@ -257,7 +257,7 @@ export default function LobbyScreen() {
   const lvl = LEVELS[Math.max(0, Math.min(3, session.level))]?.name ?? 'Yumuşak';
   const st = session.state ?? {};
   const story = st.story_id ? stories.find((s) => s.id === st.story_id) : undefined;
-  const count = game.engine === 'truth_dare' ? Math.min(game.rounds, (st.truths?.length ?? 0) + (st.dares?.length ?? 0)) : session.question_ids.length;
+  const count = game.engine === 'truth_dare' ? (st.truths?.length ?? 0) + (st.dares?.length ?? 0) : session.question_ids.length;
   const info =
     game.engine === 'story'
       ? story?.title ?? 'Etkileşimli hikâye'

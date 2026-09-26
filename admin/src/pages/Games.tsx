@@ -87,7 +87,7 @@ export default function Games() {
         {error ? <ErrorBox error={error} onRetry={() => reload()} /> : (
           <div className="tbl-scroll">
             <table className="tbl" style={{ minWidth: 980 }}>
-              <thead><tr><th>Oyun</th><th>Motor</th><th>Kategori</th><th>Tur</th><th>Süre</th><th>Oynanma · 30g</th><th>Tamamlama</th><th>Sıra</th><th>Durum</th><th /></tr></thead>
+              <thead><tr><th>Oyun</th><th>Motor</th><th>Kategori</th><th>Süre</th><th>Oynanma · 30g</th><th>Tamamlama</th><th>Sıra</th><th>Durum</th><th /></tr></thead>
               <tbody>
                 {loading && !data ? <SkelRows cols={10} /> : games.length === 0 ? (
                   <tr><td colSpan={10}><Empty icon="playing_cards" title="Henüz oyun yok" action={perms.content ? <Btn variant="primary" icon="add" onClick={() => setEdit(blank(10))}>Yeni oyun</Btn> : undefined}>Uygulamada görünen oyunları buradan oluşturup düzenleyebilirsiniz.</Empty></td></tr>
@@ -103,7 +103,6 @@ export default function Games() {
                       </td>
                       <td className="m">{ENGINE_LABEL[g.engine]}</td>
                       <td className="num">{g.engine === 'story' ? <Link to="/hikayeler" onClick={(e) => e.stopPropagation()}>Hikâyeler</Link> : g.engine === 'quiz' ? <Link to={`/testler?oyun=${g.id}`} onClick={(e) => e.stopPropagation()}>{num(g.categories?.[0]?.count ?? 0)} test</Link> : <Link to={`/kategoriler?oyun=${g.id}`} onClick={(e) => e.stopPropagation()}>{num(g.categories?.[0]?.count ?? 0)}</Link>}</td>
-                      <td className="num">{num(g.rounds)}</td>
                       <td className="m nowrap">{g.duration_label || '—'}</td>
                       <td className="num">{stats.loading ? <span className="skel" style={{ display: 'inline-block', width: 40, height: 12 }} /> : s ? num(s.plays_30) : '—'}</td>
                       <td className="num">{stats.loading ? <span className="skel" style={{ display: 'inline-block', width: 30, height: 12 }} /> : s?.completion != null ? pct(s.completion, 0) : '—'}</td>
@@ -162,7 +161,6 @@ function GameModal({ game, existing, onClose, onSaved }: { game: Omit<Game, 'id'
     setErr(null);
     if (f.name.trim().length < 2) return setErr('Oyun adı en az 2 karakter olmalı.');
     if (!/^#[0-9a-fA-F]{6}$/.test(f.color)) return setErr('Renk #RRGGBB biçiminde olmalı.');
-    if (!(f.rounds >= 1 && f.rounds <= 50)) return setErr('Tur sayısı 1 ile 50 arasında olmalı.');
     setBusy(true);
     const payload = {
       name: f.name.trim(), description: f.description.trim(), icon: f.icon || 'favorite', color: f.color,
@@ -195,7 +193,6 @@ function GameModal({ game, existing, onClose, onSaved }: { game: Omit<Game, 'id'
         {isNew && f.engine === 'cards' && <div className="full"><InfoNote>Kart Seç motoru: her soruda 2–6 resimli kart bulunur, doğru cevap yoktur (partnerler aynı kartı seçmeye çalışır). Kart görsellerini soru düzenleyicisinden yükleyin (en fazla 5 MB).</InfoNote></div>}
         <Field label="Açıklama" className="full"><textarea className="textarea" value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={300} style={{ minHeight: 72 }} /></Field>
         <Field label="Süre etiketi" hint="Ör. 10–15 dk"><input className="input" value={f.duration_label} onChange={(e) => set('duration_label', e.target.value)} maxLength={30} /></Field>
-        <Field label="Tur sayısı" hint="1–50"><input className="input" type="number" min={1} max={50} value={f.rounds} onChange={(e) => set('rounds', Number(e.target.value))} /></Field>
         <Field label="Sıra" hint="Küçük değer önce gösterilir"><input className="input" type="number" value={f.sort} onChange={(e) => set('sort', Number(e.target.value))} /></Field>
         <IconField label="Simge" value={f.icon} onChange={(v) => set('icon', v)} />
         <ColorField label="Renk" value={f.color} onChange={(v) => set('color', v)} />
