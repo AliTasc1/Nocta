@@ -272,7 +272,7 @@ function OptionCard({ letter, text, state, who, disabled, onPress }: { letter: s
 }
 
 /** Bilgi testi skor şeridi: iki partnerin doğru sayısı */
-function ScoreStrip({ me, partner, myScore, partnerScore, of }: { me: Player; partner: Player; myScore: number; partnerScore: number; of: number }) {
+export function ScoreStrip({ me, partner, myScore, partnerScore, of }: { me: Player; partner: Player; myScore: number; partnerScore: number; of: number }) {
   const lead = myScore === partnerScore ? null : myScore > partnerScore ? 'me' : 'partner';
   return (
     <View

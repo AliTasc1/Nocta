@@ -49,12 +49,27 @@ export function optionsOf(q: Question | null | undefined): string[] {
   return [];
 }
 
+/** Sorunun görsel adresleri (options ile hizalı). Eksik/bozuk → boş dize. */
+export function mediaOf(q: Question | null | undefined): string[] {
+  let m = q?.media as unknown;
+  if (typeof m === 'string') {
+    try {
+      m = JSON.parse(m);
+    } catch {
+      m = [];
+    }
+  }
+  if (!Array.isArray(m)) return [];
+  return m.map((x) => (typeof x === 'string' ? x.trim() : ''));
+}
+
 export const haptic = {
   tap: () => Haptics.selectionAsync().catch(() => {}),
   light: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}),
   heavy: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}),
   success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}),
   warn: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {}),
+  error: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {}),
 };
 
 /** Sistem "hareketi azalt" ayarı */
@@ -203,7 +218,7 @@ export function RadialGlow({ color, top = '45%', size = 1.1, left = '50%' }: { c
   const { width } = useWindowDimensions();
   const d = width * size;
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
       <View style={{ position: 'absolute', top, left, width: d, height: d, marginLeft: -d / 2, marginTop: -d / 2, borderRadius: d / 2, backgroundColor: color, opacity: 0.55, transform: [{ scaleY: 0.8 }] }} />
       <View style={{ position: 'absolute', top, left, width: d * 1.5, height: d * 1.5, marginLeft: -d * 0.75, marginTop: -d * 0.75, borderRadius: d * 0.75, backgroundColor: color, opacity: 0.18 }} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(12,8,11,.35)' }]} />

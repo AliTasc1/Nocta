@@ -4,7 +4,9 @@ import { BackHandler, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDialog } from '@/components/Dialog';
+import { CardPick } from '@/components/games/CardPick';
 import { Challenges } from '@/components/games/Challenges';
+import { EmojiGame } from '@/components/games/EmojiGame';
 import { KnowMe } from '@/components/games/KnowMe';
 import { Quiz } from '@/components/games/Quiz';
 import { SecretQuestions } from '@/components/games/SecretQuestions';
@@ -112,6 +114,12 @@ export default function PlayScreen() {
         break;
       case 'quiz':
         body = <Quiz {...props} />;
+        break;
+      case 'emoji':
+        body = <EmojiGame {...props} />;
+        break;
+      case 'cards':
+        body = <CardPick {...props} />;
         break;
       default:
         body = (

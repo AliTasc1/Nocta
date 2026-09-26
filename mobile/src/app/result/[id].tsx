@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { emojiCorrectIndex } from '@/components/games/EmojiGame';
 import { quizCorrectIndex } from '@/components/games/Quiz';
 import { finishCache, haptic, optionsOf, RadialGlow, upper, useCompact, useReducedMotion, type FinishResult } from '@/components/games/shared';
 import { Button, EmptyState, Icon, Loading } from '@/components/ui';
@@ -90,9 +91,10 @@ export default function ResultScreen() {
     };
   }, [session, userId, engine, questionById]);
 
-  // Çift Testleri: istemci tarafı ayrıntı (uyum turları + bilgi turlarında kişi başı doğru)
+  // Çift Testleri / Emojilerle Anlat: istemci tarafı ayrıntı (eşleşme turları + bilgi turlarında kişi başı doğru)
   useEffect(() => {
-    if (!session || !userId || engine !== 'quiz') return;
+    if (!session || !userId || (engine !== 'quiz' && engine !== 'emoji')) return;
+    const correctOf = engine === 'emoji' ? emojiCorrectIndex : quizCorrectIndex;
     let alive = true;
     (async () => {
       const { data } = await supabase.from('session_answers').select('*').eq('session_id', session.id).order('round');
@@ -107,7 +109,7 @@ export default function ResultScreen() {
         const theirs = list.find((a) => a.user_id !== userId);
         if (!mine || !theirs) return;
         const qid = mine.question_id ?? theirs.question_id;
-        const ci = qid ? quizCorrectIndex(qs[qid]) : null;
+        const ci = qid ? correctOf(qs[qid]) : null;
         const a = String(mine.answer?.choice);
         const b = String(theirs.answer?.choice);
         if (ci != null) {
@@ -161,19 +163,30 @@ export default function ResultScreen() {
 
   const matchGame = game.engine === 'would_you_rather' || game.engine === 'this_or_that';
   const partnerName = partner?.display_name || 'Partnerin';
-  const quizKnow = game.engine === 'quiz' && !!quiz && quiz.knowRounds > 0;
+  const isQuizLike = game.engine === 'quiz' || game.engine === 'emoji';
+  const quizKnow = isQuizLike && !!quiz && quiz.knowRounds > 0;
   const quizOnlyKnow = quizKnow && quiz!.compatRounds === 0;
-  const copy = game.engine === 'quiz' ? quizHeadline(quiz, matches, rounds, partnerName) : headline(game.engine, matches, rounds);
+  const copy = isQuizLike ? quizHeadline(quiz, matches, rounds, partnerName, game.engine === 'emoji') : headline(game.engine, matches, rounds);
   const bigNumber = quizOnlyKnow
     ? { n: quiz!.myCorrect, of: quiz!.knowRounds }
-    : matchGame || game.engine === 'know_me' || game.engine === 'quiz'
+    : matchGame || game.engine === 'know_me' || isQuizLike || game.engine === 'cards'
       ? { n: matches, of: rounds }
       : { n: rounds, of: null };
-  const bigCaption = game.engine === 'quiz' ? (quizOnlyKnow ? 'senin doğru cevabın' : 'aynı cevap') : null;
-  const second = game.engine === 'quiz'
+  const bigCaption = isQuizLike
+    ? quizOnlyKnow
+      ? 'senin doğru cevabın'
+      : game.engine === 'emoji'
+        ? 'aynı emoji'
+        : 'aynı cevap'
+    : game.engine === 'cards'
+      ? 'aynı kart'
+      : null;
+  const second = isQuizLike
     ? quizKnow
       ? { k: 'Doğru cevaplar', v: `Sen ${quiz!.myCorrect} · ${partnerName} ${quiz!.partnerCorrect}` }
-      : { k: 'Uyum', v: rounds ? `%${Math.round((matches / rounds) * 100)} aynı cevap` : '—' }
+      : { k: 'Uyum', v: rounds ? `%${Math.round((matches / rounds) * 100)} ${game.engine === 'emoji' ? 'aynı emoji' : 'aynı cevap'}` : '—' }
+    : game.engine === 'cards'
+    ? { k: 'Eşleşme', v: `${matches} / ${rounds} aynı kart` }
     : matchGame
     ? { k: 'En tatlı fark', v: sweetDiff ?? (rounds ? `%${Math.round((matches / rounds) * 100)} uyum` : '—') }
     : game.engine === 'know_me'
@@ -247,10 +260,12 @@ export default function ResultScreen() {
 
 type QuizStats = { compatRounds: number; same: number; knowRounds: number; myCorrect: number; partnerCorrect: number };
 
-function quizHeadline(q: QuizStats | null, matches: number, rounds: number, partnerName: string): { a: string; b: string } {
+function quizHeadline(q: QuizStats | null, matches: number, rounds: number, partnerName: string, emoji = false): { a: string; b: string } {
   if (q && q.knowRounds > 0 && q.compatRounds === 0) {
-    if (q.myCorrect > q.partnerCorrect) return { a: 'Bu test', b: 'senin!' };
-    if (q.partnerCorrect > q.myCorrect) return { a: 'Bu test', b: `${partnerName} kazandı!` };
+    const noun = emoji ? 'Bu oyun' : 'Bu test';
+    if (q.myCorrect > q.partnerCorrect) return { a: noun, b: 'senin!' };
+    if (q.partnerCorrect > q.myCorrect) return { a: noun, b: `${partnerName} kazandı!` };
+    if (emoji) return { a: 'Berabere,', b: 'emoji ustalarısınız.' };
     return { a: 'Berabere,', b: 'ikiniz de bilgilisiniz.' };
   }
   if (rounds > 0 && matches === rounds) return { a: 'Kusursuz', b: 'uyum!' };
@@ -263,6 +278,9 @@ function headline(engine: string, matches: number, rounds: number): { a: string;
     case 'this_or_that':
       if (rounds > 0 && matches === rounds) return { a: 'Kusursuz', b: 'eşleştiniz!' };
       return matches > 0 ? { a: 'Harika,', b: 'eşleştiniz!' } : { a: 'Zıtlar', b: 'çekişir.' };
+    case 'cards':
+      if (rounds > 0 && matches === rounds) return { a: 'Hep aynı', b: 'kart!' };
+      return matches * 2 >= rounds ? { a: 'Aynı kart,', b: 'aynı kalp.' } : { a: 'Farklı kartlar,', b: 'tatlı sürprizler.' };
     case 'know_me':
       return matches * 2 >= rounds ? { a: 'Birbirinizi', b: 'tanıyorsunuz.' } : { a: 'Keşfedecek', b: 'çok şey var.' };
     case 'secret_questions':

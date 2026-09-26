@@ -8,7 +8,9 @@ export type Engine =
   | 'this_or_that'
   | 'story'
   | 'chat_game'
-  | 'quiz';
+  | 'quiz'
+  | 'emoji'
+  | 'cards';
 
 export type ProfileSettings = {
   blur_previews: boolean;
@@ -84,8 +86,10 @@ export type Question = {
   level: number;
   mood: string;
   options: string[];
-  /** Yalnızca 'quiz': doğru şıkkın indeksi (0–3). null → uyum testi (doğru cevap yok) */
+  /** 'quiz' (0–3) ve 'emoji' (0–5): doğru şıkkın indeksi. null → eşleşme modu (doğru cevap yok) */
   correct_index: number | null;
+  /** 'cards': options[i] kartının görsel adresi (boş dize / eksik olabilir). Eski satırlarda yok → [] */
+  media: string[];
   timer_seconds: number | null;
   is_active: boolean;
 };
