@@ -15,7 +15,6 @@ import { colors, fonts } from '@/theme';
 
 const ITEMS: { key: keyof ProfileSettings; title: string; desc: string }[] = [
   { key: 'blur_previews', title: 'Bildirim önizlemelerini gizle', desc: 'Kilit ekranında mesaj içeriği yerine “Yeni bir mesajın var” görünür' },
-  { key: 'screenshot_alerts', title: 'Ekran görüntüsü uyarısı', desc: 'Sohbetin ekran görüntüsü alınırsa ikiniz de haberdar olursunuz' },
   { key: 'disappearing_messages', title: 'Kaybolan mesajlar', desc: 'Yeni mesajlar 24 saat sonra otomatik silinir (biriniz açarsa ikiniz için geçerli)' },
   { key: 'app_lock', title: 'Uygulama kilidi', desc: 'Açılışta Face ID, parmak izi ya da cihaz şifresi istenir' },
   { key: 'notifications', title: 'Bildirimler', desc: 'Görevler, oyun davetleri ve mesajlar için anlık bildirim' },
@@ -93,6 +92,22 @@ export default function Privacy() {
             </Pressable>
           );
         })}
+      </View>
+
+      {/* Ekran görüntüsü koruması artık her zaman açık (ayar değil, bilgi satırı) */}
+      <View
+        accessible
+        accessibilityLabel="Ekran görüntüsü koruması her zaman açık"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 20, backgroundColor: colors.velvet, borderWidth: 1, borderColor: colors.line }}
+      >
+        <Icon name="screenshot_monitor" size={22} color={colors.blush} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <T v="title" style={{ fontSize: 14.5, lineHeight: 20, fontFamily: fonts.semibold }}>Ekran görüntüsü koruması</T>
+          <T v="caption" style={{ fontFamily: fonts.medium, lineHeight: 17 }}>
+            Sohbette ekran görüntüsü ve ekran kaydı engellenir. Yine de alınırsa (ör. iPhone’da) sohbete “Ekran görüntüsü alındı” notu düşer ve partnerin bilgilendirilir.
+          </T>
+        </View>
+        <T v="caption" color={colors.success}>Her zaman açık</T>
       </View>
 
       {connected ? (

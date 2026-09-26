@@ -1,18 +1,18 @@
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import { FunctionsHttpError, type RealtimeChannel } from '@supabase/supabase-js';
 import * as Clipboard from 'expo-clipboard';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, AppState, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { Bubble, DaySeparator, type ChatMessage } from '@/components/ChatBubbles';
+import { Bubble, DaySeparator, isViewOnce, type ChatMessage } from '@/components/ChatBubbles';
+import { AttachSheet, MediaPreview, MediaViewer, type ViewerMedia } from '@/components/ChatMedia';
 import { useDialog } from '@/components/Dialog';
 import { TypingDots } from '@/components/Rings';
 import { Sheet } from '@/components/Sheet';
 import { Avatar, Button, Chip, EmptyState, Icon, IconButton, Screen, T } from '@/components/ui';
 import { isOnline, relTime, shortDate } from '@/lib/format';
+import { makePoster, MediaError, mediaPath, pickMedia, uploadChatFile, type PickedMedia } from '@/lib/chatMedia';
+import { guardScreenCapture, onScreenshot } from '@/lib/screenCapture';
 import { errorText, supabase } from '@/lib/supabase';
 import type { Message, Question } from '@/lib/types';
 import { uuid } from '@/lib/uuid';
@@ -46,7 +46,6 @@ export default function Chat() {
   const focused = useIsFocused();
   const toast = useToast();
   const showToast = toast.show;
-  const insets = useSafeAreaInsets();
   const { dialog, ask } = useDialog();
   const cid = couple?.status === 'active' && partner ? couple.id : null;
   const partnerId = partner?.id ?? null;
@@ -58,10 +57,15 @@ export default function Chat() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [online, setOnline] = useState(false);
-  const [viewer, setViewer] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<ViewerMedia | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [viewOnce, setViewOnce] = useState(false);
+  const [picked, setPicked] = useState<PickedMedia | null>(null);
+  // Tek seferlik medya açılışları: message_id → opened_at (view_once_opens, gerçek zamanlı)
+  const [opens, setOpens] = useState<Record<string, string>>({});
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [completing, setCompleting] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<{ open: boolean; loading: boolean; q: Question | null; sending: boolean }>({ open: false, loading: false, q: null, sending: false });
-  const [uploading, setUploading] = useState(false);
   const [now, setNow] = useState(nowMs);
   const channel = useRef<RealtimeChannel | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,7 +74,7 @@ export default function Chat() {
   const lastShot = useRef(0);
 
   const disappearing = !!(profile?.settings?.disappearing_messages || partner?.settings?.disappearing_messages);
-  const screenshotAlerts = !!(profile?.settings?.screenshot_alerts || partner?.settings?.screenshot_alerts);
+  // Not: Ekran görüntüsü koruması ve bildirimi artık HER ZAMAN açık; settings.screenshot_alerts'e bağlı değil.
 
   // ── Yardımcılar ────────────────────────────────────────────
   const upsert = useCallback((row: ChatMessage) => {
@@ -79,7 +83,7 @@ export default function Chat() {
       const idx = cidx >= 0 ? cidx : cur.findIndex((m) => m.id === row.id);
       if (idx >= 0) {
         const next = cur.slice();
-        next[idx] = { ...row, meta: { ...row.meta, local_uri: cur[idx].meta?.local_uri } };
+        next[idx] = { ...row, meta: { ...row.meta, local_uri: cur[idx].meta?.local_uri, local_poster: cur[idx].meta?.local_poster } };
         return next;
       }
       return [row, ...cur].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -121,9 +125,16 @@ export default function Chat() {
     setOlder((data?.length ?? 0) < PAGE ? 'done' : 'idle');
   }, [cid, older, messages]);
 
+  const loadOpens = useCallback(async () => {
+    if (!cid) return setOpens({});
+    const { data } = await supabase.from('view_once_opens').select('message_id, opened_at').eq('couple_id', cid);
+    if (data) setOpens(Object.fromEntries((data as { message_id: string; opened_at: string }[]).map((r) => [r.message_id, r.opened_at])));
+  }, [cid]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadOpens();
+  }, [load, loadOpens]);
 
   // ── Gerçek zamanlı: mesajlar, yazıyor, çevrimiçi ────────────
   useEffect(() => {
@@ -135,6 +146,10 @@ export default function Chat() {
       if (row.sender_id !== userId) setTyping(false);
     })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `couple_id=eq.${cid}` }, (p) => upsert(p.new as Message))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'view_once_opens', filter: `couple_id=eq.${cid}` }, (p) => {
+        const r = p.new as { message_id?: string; opened_at?: string };
+        if (r.message_id) setOpens((cur) => ({ ...cur, [r.message_id!]: r.opened_at ?? new Date().toISOString() }));
+      })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (p) => {
         const id = (p.old as { id?: string })?.id;
         if (id) remove(id);
@@ -162,9 +177,13 @@ export default function Chat() {
 
   // Ön plana dönünce kaçırılanları çek
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => s === 'active' && load());
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      load();
+      loadOpens();
+    });
     return () => sub.remove();
-  }, [load]);
+  }, [load, loadOpens]);
 
   // Kaybolan mesajlar ekranda da süresi dolunca kaybolsun
   useEffect(() => {
@@ -195,38 +214,15 @@ export default function Chat() {
       );
   }, [focused, visible, cid, userId, refreshUnread]);
 
-  // ── Ekran görüntüsü uyarısı ─────────────────────────────────
-  useFocusEffect(
-    useCallback(() => {
-      if (!screenshotAlerts || !cid || !userId || Platform.OS === 'web') return;
-      let sub: { remove: () => void } | null = null;
-      let cancelled = false;
-      import('expo-screen-capture')
-        .then((SC) => {
-          if (cancelled) return;
-          sub = SC.addScreenshotListener(() => {
-            if (Date.now() - lastShot.current < 10000) return;
-            lastShot.current = Date.now();
-            supabase
-              .from('messages')
-              .insert({ couple_id: cid, sender_id: userId, kind: 'screenshot', body: `${profile?.display_name ?? 'Partnerin'} sohbetin ekran görüntüsünü aldı.`, meta: {} })
-              .then(() => {});
-          });
-        })
-        .catch(() => {});
-      return () => {
-        cancelled = true;
-        sub?.remove();
-      };
-    }, [screenshotAlerts, cid, userId, profile?.display_name]),
-  );
-
   // ── Gönderme ───────────────────────────────────────────────
   const insertMessage = useCallback(
-    async (kind: Message['kind'], body: string, meta: Record<string, unknown> = {}, localUri?: string) => {
+    async (kind: Message['kind'], body: string, meta: Record<string, unknown> = {}, opts: { localUri?: string; clientId?: string; expiresAt?: string | null } = {}) => {
       if (!cid || !userId) return null;
-      const clientId = uuid();
-      const expires_at = disappearing ? new Date(Date.now() + DAY_MS).toISOString() : null;
+      const { localUri } = opts;
+      // clientId verilirse geçici balon zaten eklenmiştir (medya yüklemesi)
+      const existing = !!opts.clientId;
+      const clientId = opts.clientId ?? uuid();
+      const expires_at = opts.expiresAt !== undefined ? opts.expiresAt : disappearing ? new Date(Date.now() + DAY_MS).toISOString() : null;
       const temp: ChatMessage = {
         id: `tmp-${clientId}`,
         couple_id: cid,
@@ -239,7 +235,7 @@ export default function Chat() {
         created_at: new Date().toISOString(),
         pending: true,
       };
-      setMessages((cur) => [temp, ...cur]);
+      if (!existing) setMessages((cur) => [temp, ...cur]);
       const { data, error } = await supabase
         .from('messages')
         .insert({ couple_id: cid, sender_id: userId, kind, body, meta: { ...meta, client_id: clientId }, expires_at })
@@ -276,52 +272,161 @@ export default function Chat() {
     }
   };
 
-  const sendPhoto = async (source: 'library' | 'camera') => {
+  // ── Ekran görüntüsü koruması (her zaman açık) ───────────────
+  // Sohbet odaktayken: Android'de FLAG_SECURE ile görüntü/kayıt engellenir; iOS'ta içerik görüntüde/kayıtta
+  // boş çıkar ama tuş kombinasyonu engellenemez → dinleyiciyle algılayıp uyarı + sohbete not düşülür.
+  // Android'de engellenen denemelerde dinleyici genelde tetiklenmez (engel zaten korumadır). Android 13 ve
+  // altında algılama medya izni ister; bu izni bilinçli olarak istemiyoruz. Expo Go'da da çalışır.
+  const screenshotHandler = useRef<() => void>(() => {});
+  const handleScreenshot = () => {
+    if (Date.now() - lastShot.current < 5000) return;
+    lastShot.current = Date.now();
+    const warn = 'Ekran görüntüsü almak bu sohbette yasak. Partnerin bilgilendirildi.';
+    if (viewer) toast.show(warn, 'error');
+    else ask({ icon: 'screenshot_monitor', tone: 'warn', title: 'Ekran görüntüsü algılandı', desc: warn, actions: [{ label: 'Anladım' }] });
+    insertMessage('screenshot', 'Ekran görüntüsü aldı', {}, { expiresAt: null }).catch(() => {});
+  };
+  useEffect(() => {
+    screenshotHandler.current = handleScreenshot;
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!cid || !userId) return;
+      let dead = false;
+      let release: (() => void) | null = null;
+      let unsub: (() => void) | null = null;
+      guardScreenCapture().then((r) => (dead ? r() : (release = r)));
+      onScreenshot(() => screenshotHandler.current()).then((u) => (dead ? u() : (unsub = u)));
+      return () => {
+        dead = true;
+        release?.();
+        unsub?.();
+      };
+    }, [cid, userId]),
+  );
+
+  // ── Medya: seç → önizle → yükle (ilerlemeli) → gönder ──────
+  const pick = (source: 'library' | 'camera', capture?: 'photo' | 'video') => {
+    setAttachOpen(false);
+    // Sayfa kapanma animasyonu bitmeden sistem seçicisi açılırsa iOS'ta sunum başarısız olur
+    setTimeout(async () => {
+      try {
+        const media = await pickMedia(source, capture);
+        if (media) setPicked(media);
+      } catch (e) {
+        toast.show(e instanceof MediaError ? e.message : errorText(e), 'error');
+      }
+    }, 450);
+  };
+
+  const sendMedia = async () => {
+    const media = picked;
+    if (!media || !cid || !userId) return;
+    const vo = viewOnce;
+    setPicked(null);
+    const clientId = uuid();
+    const tempId = `tmp-${clientId}`;
+    const path = mediaPath(cid, media.ext, vo);
+    const expiresAt = disappearing ? new Date(Date.now() + DAY_MS).toISOString() : null;
+    const meta: Record<string, unknown> = vo
+      ? { view_once: true, path, ...(media.duration ? { duration: media.duration } : {}) }
+      : { path, width: media.width, height: media.height, ...(media.duration ? { duration: media.duration } : {}) };
+    setMessages((cur) => [
+      {
+        id: tempId,
+        couple_id: cid,
+        sender_id: userId,
+        kind: media.kind,
+        body: '',
+        meta: { ...meta, client_id: clientId, ...(vo ? {} : { local_uri: media.uri }) },
+        expires_at: expiresAt,
+        read_at: null,
+        created_at: new Date().toISOString(),
+        pending: true,
+        progress: 0,
+      },
+      ...cur,
+    ]);
+    const patchTemp = (patch: Partial<ChatMessage> | ((m: ChatMessage) => Partial<ChatMessage>)) =>
+      setMessages((cur) => cur.map((m) => (m.id === tempId ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m)));
+    let lastPct = -1;
+    const onProgress = (p: number) => {
+      const pct = Math.floor(p * 20); // %5 adımlarla güncelle
+      if (pct === lastPct) return;
+      lastPct = pct;
+      patchTemp({ progress: p });
+    };
+    const uploaded: string[] = [];
     try {
-      if (source === 'camera') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          toast.show('Fotoğraf çekmek için kamera izni gerekli.', 'error');
-          return;
+      // Normal videolar için kapak karesi (tek seferlikte önizleme OLMAZ)
+      if (!vo && media.kind === 'video') {
+        const poster = await makePoster(media.uri);
+        if (poster) {
+          const posterPath = `${cid}/${uuid()}.jpg`;
+          try {
+            await uploadChatFile(posterPath, poster.uri, 'image/jpeg');
+            uploaded.push(posterPath);
+            meta.poster = posterPath;
+            patchTemp((m) => ({ meta: { ...m.meta, poster: posterPath, local_poster: poster.uri } }));
+          } catch {
+            // kapak olmadan devam
+          }
         }
       }
-      const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7, allowsEditing: false, exif: false };
-      const res = source === 'camera' ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
-      if (res.canceled || !res.assets?.[0]) return;
-      const a = res.assets[0];
-      if (a.fileSize && a.fileSize > 12 * 1024 * 1024) {
-        toast.show('Fotoğraf çok büyük (en fazla 12 MB).', 'error');
-        return;
-      }
-      setUploading(true);
-      const path = `${cid}/${uuid()}.jpg`;
-      const buf = await (await fetch(a.uri)).arrayBuffer();
-      const { error: upErr } = await supabase.storage.from('chat-media').upload(path, buf, { contentType: a.mimeType ?? 'image/jpeg', upsert: false });
-      if (upErr) throw upErr;
-      try {
-        await insertMessage('photo', '', { path, width: a.width, height: a.height }, a.uri);
-      } catch (e) {
-        supabase.storage.from('chat-media').remove([path]).catch(() => {});
-        throw e;
-      }
+      await uploadChatFile(path, media.uri, media.mimeType, onProgress);
+      uploaded.push(path);
+      await insertMessage(media.kind, '', meta, { clientId, localUri: vo ? undefined : media.uri, expiresAt });
     } catch (e) {
+      if (uploaded.length) supabase.storage.from('chat-media').remove(uploaded).catch(() => {});
+      patchTemp({ pending: false, failed: true, progress: undefined });
       toast.show(errorText(e), 'error');
-    } finally {
-      setUploading(false);
     }
   };
 
-  const pickPhoto = () =>
-    ask({
-      icon: 'photo_camera',
-      title: 'Fotoğraf gönder',
-      desc: disappearing ? 'Kaybolan mesajlar açık: fotoğraf 24 saat sonra sohbetten kalkar.' : 'Fotoğraflar yalnızca ikinizin görebileceği özel bir alanda saklanır.',
-      actions: [
-        { label: 'Galeriden seç', icon: 'photo_library', onPress: () => void setTimeout(() => sendPhoto('library'), 450) },
-        ...(Platform.OS !== 'web' ? [{ label: 'Fotoğraf çek', icon: 'photo_camera', kind: 'outline' as const, onPress: () => void setTimeout(() => sendPhoto('camera'), 450) }] : []),
-        { label: 'Vazgeç', kind: 'ghost' },
-      ],
-    });
+  const openMedia = async (m: ChatMessage, url?: string) => {
+    if (m.kind === 'photo') {
+      if (url) setViewer({ kind: 'photo', url });
+      return;
+    }
+    const local = m.meta?.local_uri as string | undefined;
+    if (local) return setViewer({ kind: 'video', url: local });
+    const { data, error } = await supabase.storage.from('chat-media').createSignedUrl(String(m.meta?.path ?? ''), 3600);
+    if (error || !data?.signedUrl) return toast.show('Video açılamadı. Tekrar dene.', 'error');
+    setViewer({ kind: 'video', url: data.signedUrl });
+  };
+
+  const openViewOnce = async (m: ChatMessage) => {
+    if (openingId || opens[m.id] || m.sender_id === userId) return;
+    setOpeningId(m.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('view-once', { body: { message_id: m.id } });
+      if (error) {
+        let status = 0;
+        let payload: { error?: string; opened?: boolean } | null = null;
+        if (error instanceof FunctionsHttpError) {
+          const res = error.context as Response;
+          status = res.status;
+          payload = await res.json().catch(() => null);
+        }
+        if (status === 410 || payload?.opened) {
+          setOpens((cur) => ({ ...cur, [m.id]: cur[m.id] ?? new Date().toISOString() }));
+          toast.show(payload?.error ?? 'Bu medya zaten açıldı.', 'info');
+          return;
+        }
+        throw new Error(payload?.error ?? 'Medya açılamadı. Tekrar dene.');
+      }
+      const r = data as { url?: string; kind?: 'photo' | 'video' } | null;
+      if (!r?.url) throw new Error('Medya açılamadı. Tekrar dene.');
+      // Sunucu açılışı kaydetti: bu andan itibaren bir daha açılamaz
+      setOpens((cur) => ({ ...cur, [m.id]: cur[m.id] ?? new Date().toISOString() }));
+      setViewer({ kind: r.kind === 'video' ? 'video' : 'photo', url: r.url, viewOnce: true });
+    } catch (e) {
+      toast.show(errorText(e), 'error');
+    } finally {
+      setOpeningId(null);
+    }
+  };
 
   // ── Sohbet oyunu: görev ─────────────────────────────────────
   const fetchPrompt = useCallback(async () => {
@@ -387,7 +492,9 @@ export default function Chat() {
             onPress: async () => {
               const { error } = await supabase.from('messages').delete().eq('id', m.id);
               if (error) throw error;
-              if (m.kind === 'photo' && m.meta?.path) supabase.storage.from('chat-media').remove([m.meta.path]).catch(() => {});
+              // Tek seferlik dosyalar (vo/) istemciden görünmediği için sunucu tarafında temizlenir
+              const files = [m.meta?.path, m.meta?.poster].filter((f): f is string => typeof f === 'string' && !f.includes('/vo/'));
+              if ((m.kind === 'photo' || m.kind === 'video') && files.length) supabase.storage.from('chat-media').remove(files).catch(() => {});
               remove(m.id);
             },
           },
@@ -421,8 +528,11 @@ export default function Chat() {
                             reported_user_id: m.sender_id,
                             couple_id: cid,
                             message_id: m.id,
-                            type: m.kind === 'photo' ? 'photo' : 'chat',
-                            title: m.kind === 'photo' ? 'Sohbette fotoğraf bildirildi' : 'Sohbet mesajı bildirildi',
+                            type: m.kind === 'photo' || m.kind === 'video' ? 'photo' : 'chat',
+                            title:
+                              m.kind === 'photo' || m.kind === 'video'
+                                ? `Sohbette ${isViewOnce(m) ? 'tek seferlik ' : ''}${m.kind === 'video' ? 'video' : 'fotoğraf'} bildirildi`
+                                : 'Sohbet mesajı bildirildi',
                             description: m.body.slice(0, 1000),
                             priority: 'med',
                           });
@@ -506,6 +616,7 @@ export default function Chat() {
           data={visible}
           inverted={visible.length > 0}
           keyExtractor={(m) => m.id}
+          extraData={{ opens, openingId }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 4, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -535,8 +646,12 @@ export default function Chat() {
                 <Bubble
                   m={item}
                   mine={item.sender_id === userId}
+                  partnerName={partner?.display_name}
                   onLongPress={() => onLongPress(item)}
-                  onOpenPhoto={setViewer}
+                  onOpenMedia={openMedia}
+                  onOpenViewOnce={() => openViewOnce(item)}
+                  viewOnceOpenedAt={opens[item.id] ?? null}
+                  opening={openingId === item.id}
                   onCompleteChallenge={() => completeChallenge(item)}
                   completing={completing === item.id}
                 />
@@ -550,9 +665,17 @@ export default function Chat() {
       <View style={styles.composer}>
         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
           <Chip label="Görev gönder" icon="bolt" active onPress={fetchPrompt} />
-          <Chip label={uploading ? 'Yükleniyor…' : 'Fotoğraf'} icon="photo_camera" onPress={uploading ? undefined : pickPhoto} />
+          <Chip label="Fotoğraf / video" icon="perm_media" onPress={() => setAttachOpen(true)} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fotoğraf ya da video ekle"
+            onPress={() => setAttachOpen(true)}
+            style={({ pressed }) => [styles.send, { backgroundColor: 'rgba(255,255,255,.06)', borderWidth: 1, borderColor: 'rgba(255,230,240,.1)', opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Icon name="add_photo_alternate" size={21} color={colors.blush} />
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={onChangeText}
@@ -607,15 +730,10 @@ export default function Chat() {
         <T v="caption" color={colors.mute}>Partnerin görevi sohbette bir kart olarak görür ve “Tamamladım” diyebilir. Görevler her zaman atlanabilir.</T>
       </Sheet>
 
-      {/* Tam ekran fotoğraf */}
-      <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)} statusBarTranslucent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,.96)' }}>
-          {viewer ? <Image source={{ uri: viewer }} style={{ flex: 1, marginTop: insets.top + 60, marginBottom: insets.bottom + 20 }} contentFit="contain" accessibilityLabel="Fotoğraf" /> : null}
-          <View style={{ position: 'absolute', top: insets.top + 8, right: 16 }}>
-            <IconButton name="close" label="Kapat" onPress={() => setViewer(null)} bg="rgba(255,255,255,.1)" />
-          </View>
-        </View>
-      </Modal>
+      {/* Medya ekleme, önizleme ve tam ekran görüntüleyici */}
+      <AttachSheet visible={attachOpen} onClose={() => setAttachOpen(false)} viewOnce={viewOnce} onViewOnce={setViewOnce} onPick={pick} disappearing={disappearing} />
+      <MediaPreview media={picked} viewOnce={viewOnce} onViewOnce={setViewOnce} onSend={sendMedia} onClose={() => setPicked(null)} />
+      <MediaViewer media={viewer} onClose={() => setViewer(null)} />
       {dialog}
     </Screen>
   );

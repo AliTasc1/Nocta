@@ -179,7 +179,7 @@ export type Message = {
   id: string;
   couple_id: string;
   sender_id: string;
-  kind: 'text' | 'challenge' | 'photo' | 'system' | 'screenshot';
+  kind: 'text' | 'challenge' | 'photo' | 'video' | 'system' | 'screenshot';
   body: string;
   meta: Record<string, any>;
   expires_at: string | null;

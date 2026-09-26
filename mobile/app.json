@@ -14,8 +14,9 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Uygulama kilidini Face ID ile açmak için kullanılır.",
-        "NSCameraUsageDescription": "Partnerinin QR davet kodunu okumak ve sohbette fotoğraf çekmek için kamera kullanılır.",
-        "NSPhotoLibraryUsageDescription": "Sohbette fotoğraf paylaşmak için galerine erişim gerekir.",
+        "NSCameraUsageDescription": "Partnerinin QR davet kodunu okumak ve sohbette fotoğraf/video çekmek için kamera kullanılır.",
+        "NSMicrophoneUsageDescription": "Sohbette sesli video çekmek için mikrofon kullanılır.",
+        "NSPhotoLibraryUsageDescription": "Sohbette fotoğraf ve video paylaşmak için galerine erişim gerekir.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -29,7 +30,11 @@
       },
       "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+      "permissions": [
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "single",
@@ -55,8 +60,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Sohbette fotoğraf paylaşmak için galerine erişim gerekir.",
-          "cameraPermission": "Sohbette fotoğraf çekmek için kamera kullanılır."
+          "photosPermission": "Sohbette fotoğraf ve video paylaşmak için galerine erişim gerekir.",
+          "cameraPermission": "Sohbette fotoğraf ve video çekmek için kamera kullanılır.",
+          "microphonePermission": "Sohbette sesli video çekmek için mikrofon kullanılır."
         }
       ],
       [
@@ -71,7 +77,8 @@
         {
           "faceIDPermission": "Uygulama kilidini Face ID ile açmak için kullanılır."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": false,
