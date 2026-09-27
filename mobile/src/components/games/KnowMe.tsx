@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, initialOf, optionsOf, possessive, RadialGlow, TypingDots, useCompact } from './shared';
+import { AdvanceButton, GameBackground, GameLayout, GameTopBar, haptic, initialOf, optionsOf, possessive, RevealCountdown, SeenStatus, TypingDots, useCompact, useRevealGate } from './shared';
 import type { EngineProps } from './useGameSession';
 
 /**
@@ -25,15 +25,16 @@ export function KnowMe({ g, onClose }: EngineProps) {
 
   const mine = g.myAnswer?.answer?.choice != null ? String(g.myAnswer.answer.choice) : null;
   const theirs = g.partnerAnswer?.answer?.choice != null ? String(g.partnerAnswer.answer.choice) : null;
-  const revealed = mine != null && theirs != null;
+  const gate = useRevealGate(g, mine != null && theirs != null, r);
+  const revealed = mine != null && theirs != null && gate.revealed;
   const truth = revealed ? (iAmSubject ? mine : theirs) : null;
   const guess = revealed ? (iAmSubject ? theirs : mine) : null;
   const correct = revealed && truth === guess;
 
-  // Skor: her turda tahmin edenin doğru bildiği turlar
+  // Skor: her turda tahmin edenin doğru bildiği turlar (bu tur yalnızca açıldıktan sonra sayılır)
   let myScore = 0;
   let partnerScore = 0;
-  for (let i = 0; i <= r; i++) {
+  for (let i = 0; i < r + (revealed ? 1 : 0); i++) {
     const a = g.mineFor(i)?.answer?.choice;
     const b = g.partnerFor(i)?.answer?.choice;
     if (a == null || b == null || String(a) !== String(b)) continue;
@@ -72,13 +73,16 @@ export function KnowMe({ g, onClose }: EngineProps) {
       resTitle = correct ? 'Doğru' : 'Pek değil…';
       resSub = correct ? `+10 puan · ${g.partner.name}: “${truthText}”` : `${g.partner.name}: “${truthText}”`;
     }
+  } else if (gate.counting) {
+    resSub = 'Cevaplar açılıyor…';
   } else if (!revealed) {
     resSub = iAmSubject ? (mine ? `${possessive(g.partner.name)} tahmini bekleniyor` : 'Tahmin geldikten sonra ikiniz de görürsünüz') : `${possessive(g.partner.name)} cevabı tahmininden sonra açılır`;
   }
 
   return (
     <GameLayout
-      bg={<RadialGlow color="rgba(168,139,240,.35)" top="0%" size={1.4} />}
+      bg={<GameBackground tone={!revealed ? 'iris' : correct ? 'success' : 'rose'} />}
+      overlay={<RevealCountdown count={gate.count} />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -92,7 +96,14 @@ export function KnowMe({ g, onClose }: EngineProps) {
           right={<Text style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.mist }}>{`${r + 1} / ${g.totalRounds}`}</Text>}
         />
       }
-      footer={revealed ? <Button title={r + 1 >= g.totalRounds ? 'Sonuçları gör' : 'Sonraki soru'} iconRight="arrow_forward" kind="light" loading={g.busy} onPress={() => g.advance(r)} /> : undefined}
+      footer={
+        revealed ? (
+          <>
+            <SeenStatus gate={gate} name={g.partner.name} />
+            <AdvanceButton gate={gate} title={r + 1 >= g.totalRounds ? 'Sonuçları gör' : 'Sonraki soru'} loading={g.busy} onPress={() => g.advance(r)} />
+          </>
+        ) : undefined
+      }
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, paddingHorizontal: 14, borderRadius: 18, backgroundColor: 'rgba(168,139,240,.08)', borderWidth: 1, borderColor: 'rgba(168,139,240,.25)' }}>
         <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: iAmSubject ? g.me.color : g.partner.color, alignItems: 'center', justifyContent: 'center' }}>

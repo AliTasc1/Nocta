@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDialog } from '@/components/Dialog';
 import { joinGameChannel } from '@/components/games/gameChannel';
-import { CircleButton, haptic, initialOf, MetaText, RadialGlow, upper, useCompact, useReducedMotion, type Player } from '@/components/games/shared';
+import { CircleButton, GameBackground, haptic, initialOf, MetaText, upper, useCompact, useReducedMotion, type Player } from '@/components/games/shared';
 import { Button, EmptyState, Loading } from '@/components/ui';
 import { errorText, supabase } from '@/lib/supabase';
 import type { Game, GameSession } from '@/lib/types';
@@ -268,7 +268,7 @@ export default function LobbyScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <Stack.Screen options={{ gestureEnabled: false }} />
-      <RadialGlow color="rgba(107,30,56,.8)" top="50%" size={1.2} />
+      <GameBackground tone="wine" />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 6, paddingBottom: Math.max(insets.bottom, 16) + 12, paddingHorizontal: 24, alignItems: 'center' }}

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, MetaText, MiniAvatar, optionsOf, TypingDots, useCompact, useReducedMotion, type Player } from './shared';
+import { GameBackground, GameLayout, GameTopBar, haptic, MetaText, MiniAvatar, optionsOf, RevealCountdown, SeenStatus, TypingDots, useCompact, useReducedMotion, useRevealGate, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const ROUND_SECONDS = 10;
@@ -17,7 +17,9 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
   const opts = optionsOf(q);
   const mine = g.myAnswer?.answer?.choice != null ? String(g.myAnswer.answer.choice) : null;
   const theirs = g.partnerAnswer?.answer?.choice != null ? String(g.partnerAnswer.answer.choice) : null;
-  const revealed = mine != null && theirs != null;
+  // Hızlı oyun: açılıştan sonra biraz daha kısa izleme süresi, sonra otomatik sonraki
+  const gate = useRevealGate(g, mine != null && theirs != null, r, { minView: 2000 });
+  const revealed = mine != null && theirs != null && gate.revealed;
   const matched = revealed && mine === theirs;
 
   // Toplam eşleşme (bu cihazın görebildiği turlar)
@@ -29,15 +31,18 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
   }
 
 
-  // İkiniz de seçince ~1.2 sn sonra otomatik ilerle: yalnızca user_a çağırır,
+  // Açılış → izleme süresi dolup partner de görünce otomatik ilerle: yalnızca user_a çağırır,
   // user_a ulaşılamazsa user_b biraz daha bekleyip çağırır (indeks mutlak → çift çağrı zararsız)
   const { advance, amUserA, membersKnown } = g;
   useEffect(() => {
-    if (!revealed || !membersKnown) return;
-    (matched ? haptic.success : haptic.light)();
-    const t = setTimeout(() => advance(r), amUserA ? 1200 : 3500);
+    if (revealed) (matched ? haptic.success : haptic.light)();
+  }, [revealed, matched]);
+  const canGo = gate.canAdvance;
+  useEffect(() => {
+    if (!canGo || !membersKnown) return;
+    const t = setTimeout(() => advance(r), amUserA ? 0 : 2300);
     return () => clearTimeout(t);
-  }, [revealed, matched, r, amUserA, membersKnown, advance]);
+  }, [canGo, r, amUserA, membersKnown, advance]);
 
   const pick = (i: number) => {
     if (mine != null || !q) return;
@@ -49,11 +54,13 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
     ? g.partnerAnswered
       ? `${g.partner.name} seçti · sıra sende`
       : 'Hızlı seç!'
-    : !revealed
+    : gate.counting
+      ? 'Cevaplar açılıyor…'
+      : !revealed
       ? `${g.partner.name} bekleniyor`
       : matched
-        ? 'Eşleştiniz ♡ — sonraki →'
-        : 'Farklı seçtiniz 👀 — sonraki →';
+        ? 'Eşleştiniz ♡'
+        : 'Farklı seçtiniz 👀';
 
   const whoFor = (i: number): Player[] => {
     const w: Player[] = [];
@@ -65,6 +72,8 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
   return (
     <GameLayout
       scroll={false}
+      bg={<GameBackground tone={!revealed ? 'violet' : matched ? 'rose' : 'iris'} intensity={revealed && matched ? 1.3 : 1} />}
+      overlay={<RevealCountdown count={gate.count} />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -73,11 +82,14 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
         />
       }
       footer={
-        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          {mine && !revealed ? <TypingDots /> : null}
-          <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={{ fontFamily: fonts.bold, fontSize: 14, color: matched ? colors.blush : colors.mist }}>
-            {msg}
-          </Text>
+        <View style={{ minHeight: 48, justifyContent: 'center', gap: 2 }}>
+          <SeenStatus gate={gate} name={g.partner.name} />
+          <View style={{ height: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            {mine && !revealed ? <TypingDots /> : null}
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={{ fontFamily: fonts.bold, fontSize: 14, color: matched ? colors.blush : colors.mist }}>
+              {msg}
+            </Text>
+          </View>
         </View>
       }
     >
@@ -121,14 +133,15 @@ function BigCard({ text, side, state, who, onPress, disabled }: { text: string; 
   const scale = useState(() => new Animated.Value(reduced ? 1 : 0.94))[0];
   const fade = useState(() => new Animated.Value(reduced ? 1 : 0))[0];
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 7 }),
-      Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
-  }, [scale, fade]);
+    // Ayrı ayrı başlatılır: durum efekti `scale` üzerinde yeni animasyon başlatınca
+    // Animated.parallel tüm grubu durdurup kartı opaklık 0'da bırakıyordu.
+    Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+  }, [fade]);
   useEffect(() => {
     if (reduced) return;
-    Animated.timing(scale, { toValue: state === 'on' ? 1.02 : state === 'off' ? 0.96 : 1, duration: 200, useNativeDriver: true }).start();
+    const to = state === 'on' ? 1.02 : state === 'off' ? 0.96 : 1;
+    // İlk girişte ve boşta yaylanarak 1'e, seçimde kısa bir geçişle hedefe
+    (state === 'idle' ? Animated.spring(scale, { toValue: to, useNativeDriver: true, friction: 7 }) : Animated.timing(scale, { toValue: to, duration: 200, useNativeDriver: true })).start();
   }, [state, reduced, scale]);
   return (
     <Animated.View style={{ flex: 1, opacity: fade, transform: [{ scale }] }}>

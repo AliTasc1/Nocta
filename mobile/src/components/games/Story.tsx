@@ -10,7 +10,7 @@ import { errorText, supabase } from '@/lib/supabase';
 import type { Story as StoryRow, StoryChoice, StoryScene } from '@/lib/types';
 import { useContent } from '@/providers/ContentProvider';
 import { colors, fonts } from '@/theme';
-import { CircleButton, haptic, PresenceAvatar, TypingDots, upper, useCompact, useReducedMotion } from './shared';
+import { CircleButton, GameBackground, haptic, PresenceAvatar, RevealCountdown, TypingDots, upper, useCompact, useReducedMotion, useRevealGate } from './shared';
 import type { EngineProps } from './useGameSession';
 
 type StoryData = { story: StoryRow | null; scenes: Record<string, StoryScene>; choices: Record<string, StoryChoice[]> };
@@ -79,7 +79,10 @@ export function Story({ g, onClose }: EngineProps) {
   const isEnding = !!scene && (scene.is_ending || choices.length === 0);
   const mine: string | null = g.myAnswer?.answer?.choice ?? null;
   const theirs: string | null = g.partnerAnswer?.answer?.choice ?? partnerVotes[r] ?? null;
-  const bothVoted = !!g.myAnswer && !!g.partnerAnswer;
+  const bothIn = !!g.myAnswer && !!g.partnerAnswer;
+  // İki oy da gelince 3-2-1 → karar açılır → izleme süresinden sonra otomatik ilerler
+  const gate = useRevealGate(g, bothIn && !isEnding, r);
+  const bothVoted = bothIn && gate.revealed;
   const decided = bothVoted && mine && g.partnerAnswer?.answer?.choice ? [mine, String(g.partnerAnswer.answer.choice)].sort()[0] : null;
   const same = bothVoted && mine === g.partnerAnswer?.answer?.choice;
   const decidedChoice = decided ? choices.find((c) => c.id === decided) : undefined;
@@ -92,8 +95,11 @@ export function Story({ g, onClose }: EngineProps) {
   });
   const { advance, finish, amUserA, membersKnown } = g;
   useEffect(() => {
-    if (!decidedChoice || !membersKnown) return;
-    haptic.success();
+    if (decidedChoice) haptic.success();
+  }, [decidedChoice]);
+  const canGo = gate.canAdvance;
+  useEffect(() => {
+    if (!decidedChoice || !membersKnown || !canGo) return;
     const next = decidedChoice.next_scene_id;
     const t = setTimeout(
       async () => {
@@ -104,10 +110,10 @@ export function Story({ g, onClose }: EngineProps) {
         if (!next) await finish();
         else await advance(r, { scene_id: next, path: [...pathRef.current, next] });
       },
-      amUserA ? 1800 : 4500,
+      amUserA ? 0 : 2500,
     );
     return () => clearTimeout(t);
-  }, [decidedChoice, membersKnown, amUserA, r, advance, finish]);
+  }, [decidedChoice, membersKnown, canGo, amUserA, r, advance, finish]);
 
   // Sahne geçişi (sinematik 900ms)
   const fade = useState(() => new Animated.Value(0))[0];
@@ -143,19 +149,15 @@ export function Story({ g, onClose }: EngineProps) {
   const dotsTotal = Math.max(4, path.length + (isEnding ? 0 : 1));
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <LinearGradient colors={['#1A0F1C', '#2A1530', '#000000']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: fade }]}>
-        <View style={{ position: 'absolute', top: height * 0.22 - 180, right: -60, width: 360, height: 360, borderRadius: 180, backgroundColor: glow, opacity: 0.8 }} />
-        <View style={{ position: 'absolute', top: height * 0.22 - 260, right: -140, width: 520, height: 520, borderRadius: 260, backgroundColor: glow, opacity: 0.25 }} />
-      </Animated.View>
+    <View style={{ flex: 1, backgroundColor: colors.ink }}>
+      <GameBackground accent={glow} intensity={1.25} />
       {/* Çizgili doku */}
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden', opacity: 0.5 }]}>
         {Array.from({ length: 40 }).map((_, i) => (
           <View key={i} style={{ position: 'absolute', top: -200, left: i * 20 - 200, width: 1, height: height * 1.6, backgroundColor: 'rgba(255,230,240,.035)', transform: [{ rotate: '45deg' }] }} />
         ))}
       </View>
-      <LinearGradient pointerEvents="none" colors={['transparent', '#000000', '#000000']} locations={[0, 0.3, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%' }} />
+      <LinearGradient pointerEvents="none" colors={['rgba(12,8,11,0)', 'rgba(12,8,11,.72)', 'rgba(12,8,11,.9)']} locations={[0, 0.35, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%' }} />
 
       <View style={{ flex: 1, paddingTop: insets.top + 6, paddingLeft: insets.left, paddingRight: insets.right }}>
         <View style={{ paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -232,7 +234,9 @@ export function Story({ g, onClose }: EngineProps) {
                     );
                   })}
                   <View style={{ minHeight: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    {decidedChoice ? (
+                    {bothIn && !gate.revealed ? (
+                      <Text style={{ fontFamily: fonts.semibold, fontSize: 13, color: colors.blush }}>Karar açılıyor…</Text>
+                    ) : decidedChoice ? (
                       <Text style={{ fontFamily: fonts.semibold, fontSize: 13, color: same ? colors.blush : colors.irisSoft, textAlign: 'center' }}>
                         {same ? 'Aynı yolu seçtiniz ♡' : `Kader seçti: “${decidedChoice.text}”`}
                       </Text>
@@ -251,6 +255,7 @@ export function Story({ g, onClose }: EngineProps) {
           )}
         </ScrollView>
       </View>
+      <RevealCountdown count={gate.count} label="Karar açılıyor…" />
     </View>
   );
 }

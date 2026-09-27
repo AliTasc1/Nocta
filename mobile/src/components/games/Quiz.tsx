@@ -2,10 +2,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import type { Question } from '@/lib/types';
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, upper, useCompact, useReducedMotion, type Player } from './shared';
+import { AdvanceButton, GameBackground, GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, ResultPill, RevealCountdown, SeenStatus, useRevealGate, TypingDots, upper, useCompact, useReducedMotion, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -39,19 +39,21 @@ export function Quiz({ g, onClose }: EngineProps) {
 
   const mine = choiceOf(g.myAnswer);
   const theirs = choiceOf(g.partnerAnswer);
-  const revealed = mine != null && theirs != null;
+  // İki seçim de bu cihaza ulaşınca 3-2-1 geri sayım → otomatik açılış
+  const gate = useRevealGate(g, mine != null && theirs != null, r);
+  const revealed = mine != null && theirs != null && gate.revealed;
   const matched = revealed && mine === theirs;
   const iRight = revealed && isKnowledge && mine === String(correct);
   const theyRight = revealed && isKnowledge && theirs === String(correct);
   const isLast = r + 1 >= g.totalRounds;
 
-  // Önceki turlar (ve açılmışsa bu tur) üzerinden istemci tarafı skor
+  // Önceki turlar (ve açılmışsa bu tur) üzerinden istemci tarafı skor — geri sayım bitmeden bu tur sayılmaz
   let myScore = 0;
   let partnerScore = 0;
   let sameCount = 0;
   let knowledgeRounds = 0;
   let compatRounds = 0;
-  for (let i = 0; i <= r; i++) {
+  for (let i = 0; i < r + (revealed ? 1 : 0); i++) {
     const a = choiceOf(g.mineFor(i));
     const b = choiceOf(g.partnerFor(i));
     if (a == null || b == null) continue;
@@ -114,11 +116,14 @@ export function Quiz({ g, onClose }: EngineProps) {
     ? { text: 'Soru yükleniyor…', tone: 'idle' as const }
     : mine == null
       ? { text: g.partnerAnswered ? `${g.partner.name} cevapladı · sıra sende` : 'Gizlice bir cevap seç', tone: 'idle' as const }
-      : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
+      : gate.counting
+        ? { text: 'Cevaplar açılıyor…', tone: 'wait' as const }
+        : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
 
   return (
     <GameLayout
-      bg={<RadialGlow color={isKnowledge ? 'rgba(168,139,240,.32)' : 'rgba(231,104,138,.3)'} top="0%" size={1.4} />}
+      bg={<GameBackground tone={!revealed ? (isKnowledge ? 'iris' : 'rose') : isKnowledge ? (iRight ? 'success' : 'error') : matched ? 'rose' : 'iris'} intensity={revealed && !isKnowledge && matched ? 1.3 : 1} />}
+      overlay={<RevealCountdown count={gate.count} />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -135,7 +140,10 @@ export function Quiz({ g, onClose }: EngineProps) {
       }
       footer={
         revealed ? (
-          <Button title={isLast ? 'Testi bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} kind="light" loading={g.busy} onPress={() => g.advance(r)} />
+          <>
+            <SeenStatus gate={gate} name={g.partner.name} />
+            <AdvanceButton gate={gate} title={isLast ? 'Testi bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} loading={g.busy} onPress={() => g.advance(r)} />
+          </>
         ) : (
           <View style={{ flexDirection: 'row' }}>
             <ResultPill text={pill.text} tone={pill.tone} />
@@ -190,7 +198,7 @@ export function Quiz({ g, onClose }: EngineProps) {
           </Text>
         ) : null}
         <Text maxFontSizeMultiplier={1.25} style={{ fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.mist, textAlign: 'center' }}>
-          {revealed ? resSub : mine != null ? 'Cevabın kilitlendi. İkiniz de cevaplayınca açılır.' : 'Cevaplar gizli kalır; ikiniz de seçince birlikte açılır.'}
+          {revealed ? resSub : gate.counting ? 'İkiniz de cevapladınız.' : mine != null ? 'Cevabın kilitlendi. İkiniz de cevaplayınca açılır.' : 'Cevaplar gizli kalır; ikiniz de seçince birlikte açılır.'}
         </Text>
       </View>
     </GameLayout>

@@ -3,7 +3,7 @@ import { Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui';
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, initialOf, PresenceAvatar, RadialGlow, RevealText, TypingDots, useCompact, type Player } from './shared';
+import { AdvanceButton, GameBackground, GameLayout, GameTopBar, haptic, initialOf, PresenceAvatar, RevealCountdown, RevealText, SeenStatus, TypingDots, useCompact, useRevealGate, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const PLACEHOLDER = 'Bu cevap iki kişi aynı anda açana kadar gizli kalır, merak etme.';
@@ -13,7 +13,6 @@ export function SecretQuestions({ g, onClose }: EngineProps) {
   const { s: sz } = useCompact();
   const [draftState, setDraftState] = useState<{ round: number; text: string }>({ round: -1, text: '' });
   const [sending, setSending] = useState(false);
-  const [revealing, setRevealing] = useState(false);
   const [partnerTypingAt, setPartnerTypingAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const lastTypingSent = useRef(0);
@@ -25,7 +24,9 @@ export function SecretQuestions({ g, onClose }: EngineProps) {
   const myText: string | null = g.myAnswer ? String(g.myAnswer.answer?.text ?? '') : null;
   const partnerText: string | null = g.partnerAnswer ? String(g.partnerAnswer.answer?.text ?? '') : null;
   const bothIn = myText != null && partnerText != null;
-  const revealed = bothIn && Number(session.state?.revealed ?? -1) === r;
+  // İki cevap da bu cihaza ulaşınca 3-2-1 geri sayım → otomatik açılış (düğme yok)
+  const gate = useRevealGate(g, bothIn, r);
+  const revealed = bothIn && gate.revealed;
   // Taslak tura bağlı: tur değişince kendiliğinden boşalır
   const draft = draftState.round === r ? draftState.text : '';
 
@@ -65,13 +66,6 @@ export function SecretQuestions({ g, onClose }: EngineProps) {
     setSending(false);
   };
 
-  const reveal = async () => {
-    if (!bothIn || revealing) return;
-    setRevealing(true);
-    await g.updateSession({ revealed: r });
-    setRevealing(false);
-  };
-
   const partnerStatus = g.partnerAnswered ? 'Yazdı ✓' : partnerTyping ? 'Yazıyor…' : 'Bekleniyor';
 
   let footer: React.ReactNode;
@@ -84,18 +78,18 @@ export function SecretQuestions({ g, onClose }: EngineProps) {
     );
   } else if (!revealed) {
     footer = (
-      <>
-        <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.mist, textAlign: 'center' }}>
-          {bothIn ? 'İkiniz de yazdınız. Hazırsanız açın.' : `${g.partner.name} yazınca açabilirsiniz`}
+      <View style={{ minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <TypingDots color={bothIn ? colors.blush : colors.mist} />
+        <Text style={{ fontFamily: fonts.semibold, fontSize: 13, color: bothIn ? colors.blush : colors.mist, textAlign: 'center' }}>
+          {bothIn ? 'Cevaplar açılıyor…' : `${g.partner.name} yazınca cevaplar kendiliğinden açılır`}
         </Text>
-        <Button title="Cevapları aç" icon="visibility" onPress={reveal} disabled={!bothIn} loading={revealing} />
-      </>
+      </View>
     );
   } else {
     footer = (
       <>
-        <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: colors.mist, textAlign: 'center' }}>Bu sırlar yalnızca ikinizin arasında.</Text>
-        <Button title={r + 1 >= g.totalRounds ? 'Sonuçları gör' : 'Sonraki soru'} icon="arrow_forward" kind="light" onPress={() => g.advance(r)} loading={g.busy} />
+        <SeenStatus gate={gate} name={g.partner.name} />
+        <AdvanceButton gate={gate} title={r + 1 >= g.totalRounds ? 'Sonuçları gör' : 'Sonraki soru'} onPress={() => g.advance(r)} loading={g.busy} />
       </>
     );
   }
@@ -103,7 +97,8 @@ export function SecretQuestions({ g, onClose }: EngineProps) {
   return (
     <GameLayout
       keyboard
-      bg={<RadialGlow color="rgba(58,23,64,.95)" top="55%" size={1.3} />}
+      bg={<GameBackground tone={revealed ? 'rose' : 'violet'} />}
+      overlay={<RevealCountdown count={gate.count} />}
       top={
         <GameTopBar
           onClose={onClose}

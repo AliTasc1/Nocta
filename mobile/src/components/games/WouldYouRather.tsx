@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, MiniAvatar, NextFab, optionsOf, PartnerStatus, ResultPill, TypingDots, useCompact, useReducedMotion, type Player } from './shared';
+import { GameBackground, GameLayout, GameTopBar, haptic, MiniAvatar, NextFab, optionsOf, PartnerStatus, ResultPill, RevealCountdown, SeenStatus, TypingDots, useCompact, useReducedMotion, useRevealGate, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 /** 12 · Hangisini Seçerdin — ikiniz de gizlice seçer, sonra birlikte açılır */
@@ -16,7 +16,8 @@ export function WouldYouRather({ g, onClose }: EngineProps) {
   const opts = optionsOf(q);
   const mine = g.myAnswer?.answer?.choice != null ? String(g.myAnswer.answer.choice) : null;
   const theirs = g.partnerAnswer?.answer?.choice != null ? String(g.partnerAnswer.answer.choice) : null;
-  const revealed = mine != null && theirs != null;
+  const gate = useRevealGate(g, mine != null && theirs != null, r);
+  const revealed = mine != null && theirs != null && gate.revealed;
   const matched = revealed && mine === theirs;
 
   // Açılış anında titreşim
@@ -32,7 +33,9 @@ export function WouldYouRather({ g, onClose }: EngineProps) {
 
   const result = !mine
     ? { text: 'Bir seçim yap', tone: 'idle' as const }
-    : !revealed
+    : gate.counting
+      ? { text: 'Cevaplar açılıyor…', tone: 'wait' as const }
+      : !revealed
       ? { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const }
       : matched
         ? { text: 'Eşleştiniz! ♡', tone: 'match' as const }
@@ -40,6 +43,8 @@ export function WouldYouRather({ g, onClose }: EngineProps) {
 
   return (
     <GameLayout
+      bg={<GameBackground tone={!revealed ? 'rose' : matched ? 'rose' : 'iris'} intensity={revealed && matched ? 1.3 : 1} />}
+      overlay={<RevealCountdown count={gate.count} />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -48,10 +53,13 @@ export function WouldYouRather({ g, onClose }: EngineProps) {
         />
       }
       footer={
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-          <ResultPill text={result.text} tone={result.tone} />
-          {revealed ? <NextFab loading={g.busy} onPress={() => g.advance(r)} label="Sonraki soru" /> : null}
-        </View>
+        <>
+          <SeenStatus gate={gate} name={g.partner.name} />
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <ResultPill text={result.text} tone={result.tone} />
+            {revealed ? <NextFab gate={gate} loading={g.busy} onPress={() => g.advance(r)} label={r + 1 >= g.totalRounds ? 'Sonuçları gör' : 'Sonraki soru'} /> : null}
+          </View>
+        </>
       }
     >
       <View style={{ alignItems: 'center', gap: 6, paddingVertical: sz(10, 2) }}>

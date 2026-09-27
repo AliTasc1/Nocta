@@ -4,10 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Icon } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import { colors, fonts } from '@/theme';
 import { Burst, HEARTS } from './Burst';
-import { ChoiceGrid, GameLayout, GameTopBar, haptic, mediaOf, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
+import { AdvanceButton, ChoiceGrid, GameBackground, GameLayout, GameTopBar, haptic, mediaOf, MiniAvatar, optionsOf, PartnerStatus, possessive, ResultPill, RevealCountdown, SeenStatus, useRevealGate, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const MAX_CARDS = 6;
@@ -42,14 +42,16 @@ export function CardPick({ g, onClose }: EngineProps) {
 
   const mine = choiceOf(g.myAnswer);
   const theirs = choiceOf(g.partnerAnswer);
-  const revealed = mine != null && theirs != null;
+  // İki seçim de bu cihaza ulaşınca 3-2-1 geri sayım → otomatik açılış
+  const gate = useRevealGate(g, mine != null && theirs != null, r);
+  const revealed = mine != null && theirs != null && gate.revealed;
   const matched = revealed && mine === theirs;
   const isLast = r + 1 >= g.totalRounds;
   const [preview, setPreview] = useState<number | null>(null);
 
   let sameCount = 0;
   let played = 0;
-  for (let i = 0; i <= r; i++) {
+  for (let i = 0; i < r + (revealed ? 1 : 0); i++) {
     const a = choiceOf(g.mineFor(i));
     const b = choiceOf(g.partnerFor(i));
     if (a == null || b == null) continue;
@@ -93,11 +95,14 @@ export function CardPick({ g, onClose }: EngineProps) {
     ? { text: 'Soru yükleniyor…', tone: 'idle' as const }
     : mine == null
       ? { text: g.partnerAnswered ? `${g.partner.name} seçti · sıra sende` : 'Gizlice bir kart seç', tone: 'idle' as const }
-      : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
+      : gate.counting
+        ? { text: 'Kartlar açılıyor…', tone: 'wait' as const }
+        : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
 
   return (
     <GameLayout
-      bg={<RadialGlow color="rgba(231,104,138,.28)" top="0%" size={1.4} />}
+      bg={<GameBackground tone={revealed && !matched ? 'iris' : 'rose'} intensity={revealed && matched ? 1.3 : 1} />}
+      overlay={<RevealCountdown count={gate.count} label="Kartlar açılıyor…" />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -114,7 +119,10 @@ export function CardPick({ g, onClose }: EngineProps) {
       }
       footer={
         revealed ? (
-          <Button title={isLast ? 'Oyunu bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} kind="light" loading={g.busy} onPress={() => g.advance(r)} />
+          <>
+            <SeenStatus gate={gate} name={g.partner.name} />
+            <AdvanceButton gate={gate} title={isLast ? 'Oyunu bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} loading={g.busy} onPress={() => g.advance(r)} />
+          </>
         ) : (
           <View style={{ flexDirection: 'row' }}>
             <ResultPill text={pill.text} tone={pill.tone} />
@@ -186,7 +194,7 @@ export function CardPick({ g, onClose }: EngineProps) {
           </Text>
         ) : null}
         <Text maxFontSizeMultiplier={1.25} style={{ fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.mist, textAlign: 'center' }}>
-          {revealed ? resSub : mine != null ? 'Kartın kilitlendi. İkiniz de seçince kartlar açılır.' : 'Büyütmek için karta basılı tut. Seçimler gizli kalır.'}
+          {revealed ? resSub : gate.counting ? 'İkiniz de seçtiniz.' : mine != null ? 'Kartın kilitlendi. İkiniz de seçince kartlar açılır.' : 'Büyütmek için karta basılı tut. Seçimler gizli kalır.'}
         </Text>
       </View>
 

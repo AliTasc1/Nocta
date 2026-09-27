@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { emojiCorrectIndex } from '@/components/games/EmojiGame';
 import { quizCorrectIndex } from '@/components/games/Quiz';
-import { finishCache, haptic, optionsOf, RadialGlow, upper, useCompact, useReducedMotion, type FinishResult } from '@/components/games/shared';
+import { finishCache, GameBackground, haptic, optionsOf, upper, useCompact, useReducedMotion, type FinishResult } from '@/components/games/shared';
 import { Button, EmptyState, Icon, Loading } from '@/components/ui';
 import { errorText, supabase } from '@/lib/supabase';
 import type { Game, GameSession, SessionAnswer } from '@/lib/types';
@@ -201,7 +201,7 @@ export default function ResultScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <Stack.Screen options={{ gestureEnabled: false, animation: 'fade' }} />
-      <RadialGlow color="rgba(231,104,138,.45)" top="30%" size={1.2} />
+      <GameBackground tone="rose" intensity={1.2} />
       <Hearts />
       <ScrollView
         style={{ flex: 1 }}

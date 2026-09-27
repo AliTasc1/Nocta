@@ -6,7 +6,7 @@ import { Button, Icon } from '@/components/ui';
 import { mmss } from '@/lib/format';
 import { useContent } from '@/providers/ContentProvider';
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, levelName, PresenceAvatar, RadialGlow, TypingDots, upper, useCompact } from './shared';
+import { GameBackground, GameLayout, GameTopBar, haptic, levelName, PresenceAvatar, TypingDots, upper, useCompact } from './shared';
 import type { EngineProps } from './useGameSession';
 
 type Timer = { round: number; running: boolean; left: number; ends_at: number | null; v: number };
@@ -102,7 +102,7 @@ export function Challenges({ g, onClose }: EngineProps) {
 
   return (
     <GameLayout
-      bg={<RadialGlow color="rgba(231,104,138,.3)" top="56%" />}
+      bg={<GameBackground tone="rose" />}
       top={<GameTopBar onClose={onClose} center={`${r + 1} / ${g.totalRounds} GÖREV`} right={<PresenceAvatar player={g.partner} online={g.partnerOnline} />} />}
       footer={
         <>

@@ -2,12 +2,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components/ui';
+import { Icon } from '@/components/ui';
 import type { Question } from '@/lib/types';
 import { colors, fonts } from '@/theme';
 import { Burst, CONFETTI, HEARTS } from './Burst';
 import { ScoreStrip } from './Quiz';
-import { ChoiceGrid, GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, RadialGlow, ResultPill, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
+import { AdvanceButton, ChoiceGrid, GameBackground, GameLayout, GameTopBar, haptic, MiniAvatar, optionsOf, PartnerStatus, possessive, ResultPill, RevealCountdown, SeenStatus, useRevealGate, TypingDots, useCompact, useChoiceGrid, useReducedMotion, type Player } from './shared';
 import type { EngineProps } from './useGameSession';
 
 const MAX_OPTIONS = 6;
@@ -59,7 +59,9 @@ export function EmojiGame({ g, onClose }: EngineProps) {
 
   const mine = choiceOf(g.myAnswer);
   const theirs = choiceOf(g.partnerAnswer);
-  const revealed = mine != null && theirs != null;
+  // İki seçim de bu cihaza ulaşınca 3-2-1 geri sayım → otomatik açılış
+  const gate = useRevealGate(g, mine != null && theirs != null, r);
+  const revealed = mine != null && theirs != null && gate.revealed;
   const matched = revealed && mine === theirs;
   const iRight = revealed && isKnowledge && mine === String(correct);
   const theyRight = revealed && isKnowledge && theirs === String(correct);
@@ -71,7 +73,7 @@ export function EmojiGame({ g, onClose }: EngineProps) {
   let sameCount = 0;
   let knowledgeRounds = 0;
   let matchRounds = 0;
-  for (let i = 0; i <= r; i++) {
+  for (let i = 0; i < r + (revealed ? 1 : 0); i++) {
     const a = choiceOf(g.mineFor(i));
     const b = choiceOf(g.partnerFor(i));
     if (a == null || b == null) continue;
@@ -128,13 +130,16 @@ export function EmojiGame({ g, onClose }: EngineProps) {
     ? { text: 'Soru yükleniyor…', tone: 'idle' as const }
     : mine == null
       ? { text: g.partnerAnswered ? `${g.partner.name} seçti · sıra sende` : 'Gizlice bir emoji seç', tone: 'idle' as const }
-      : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
+      : gate.counting
+        ? { text: 'Seçimler açılıyor…', tone: 'wait' as const }
+        : { text: `${g.partner.name} bekleniyor`, tone: 'wait' as const };
 
   const accent = isKnowledge ? colors.irisSoft : colors.blush;
 
   return (
     <GameLayout
-      bg={<RadialGlow color={isKnowledge ? 'rgba(168,139,240,.3)' : 'rgba(231,104,138,.3)'} top="0%" size={1.4} />}
+      bg={<GameBackground tone={!revealed ? (isKnowledge ? 'iris' : 'rose') : isKnowledge ? (iRight ? 'success' : 'error') : matched ? 'rose' : 'iris'} intensity={revealed && !isKnowledge && matched ? 1.3 : 1} />}
+      overlay={<RevealCountdown count={gate.count} label="Seçimler açılıyor…" />}
       top={
         <GameTopBar
           onClose={onClose}
@@ -151,7 +156,10 @@ export function EmojiGame({ g, onClose }: EngineProps) {
       }
       footer={
         revealed ? (
-          <Button title={isLast ? 'Oyunu bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} kind="light" loading={g.busy} onPress={() => g.advance(r)} />
+          <>
+            <SeenStatus gate={gate} name={g.partner.name} />
+            <AdvanceButton gate={gate} title={isLast ? 'Oyunu bitir' : 'Sonraki soru'} iconRight={isLast ? 'flag' : 'arrow_forward'} loading={g.busy} onPress={() => g.advance(r)} />
+          </>
         ) : (
           <View style={{ flexDirection: 'row' }}>
             <ResultPill text={pill.text} tone={pill.tone} />
@@ -229,7 +237,7 @@ export function EmojiGame({ g, onClose }: EngineProps) {
           </FadeIn>
         ) : null}
         <Text maxFontSizeMultiplier={1.25} style={{ fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.mist, textAlign: 'center' }}>
-          {revealed ? resSub : mine != null ? 'Seçimin kilitlendi. İkiniz de seçince açılır.' : 'Seçimler gizli kalır; ikiniz de seçince birlikte açılır.'}
+          {revealed ? resSub : gate.counting ? 'İkiniz de seçtiniz.' : mine != null ? 'Seçimin kilitlendi. İkiniz de seçince açılır.' : 'Seçimler gizli kalır; ikiniz de seçince birlikte açılır.'}
         </Text>
       </View>
     </GameLayout>

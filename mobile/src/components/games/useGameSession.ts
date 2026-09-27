@@ -37,6 +37,8 @@ export function useGameSession(sessionId: string) {
   const [questions, setQuestions] = useState<Record<string, Question>>({});
   const [online, setOnline] = useState<string[]>([]);
   const [partnerFlags, setPartnerFlags] = useState<Record<number, boolean>>({});
+  /** Partnerin cevapları kendi cihazında açtığı turlar ('revealed' yayını) */
+  const [partnerRevealed, setPartnerRevealed] = useState<Record<number, boolean>>({});
   const [fetchedMembers, setFetchedMembers] = useState<{ id: string; user_a: string; user_b: string | null } | null>(null);
   const [fetchedPartner, setFetchedPartner] = useState<Pick<Profile, 'id' | 'display_name' | 'avatar_color'> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +53,10 @@ export function useGameSession(sessionId: string) {
   const finishing = useRef(false);
   const leaving = useRef(false);
   const requestedQ = useRef(new Set<string>());
+  /** Bu cihazda açılışı tamamlanan turlar (partner yeniden katılınca tekrar yayınlanır) */
+  const myRevealed = useRef(new Set<number>());
+  /** Partnerin 'revealed' sinyaline bir kez karşılık verilen turlar (kaçırdıysa diye) */
+  const revealReplied = useRef(new Set<number>());
   const alive = useRef(true);
 
   useEffect(() => {
@@ -231,12 +237,22 @@ export function useGameSession(sessionId: string) {
         if (!s) return;
         const mine = answersRef.current.find((a) => a.round === s.current_index && a.user_id === userId);
         if (mine) handle.send('answered', { round: s.current_index, ...(mine.answer?.public ? { choice: mine.answer.choice } : {}) });
+        if (myRevealed.current.has(s.current_index)) handle.send('revealed', { round: s.current_index });
       },
       onBroadcast: (event, payload) => {
         if (payload.from === userId) return;
         if (event === 'answered' && typeof payload.round === 'number') {
           setPartnerFlags((f) => (f[payload.round] ? f : { ...f, [payload.round]: true }));
           if (answersRef.current.some((a) => a.round === payload.round && a.user_id === userId)) fetchAnswers();
+        }
+        if (event === 'revealed' && typeof payload.round === 'number') {
+          const r = payload.round as number;
+          setPartnerRevealed((f) => (f[r] ? f : { ...f, [r]: true }));
+          // Partner bizim sinyalimizi kaçırmış olabilir: bir kez yanıtla
+          if (myRevealed.current.has(r) && !revealReplied.current.has(r)) {
+            revealReplied.current.add(r);
+            handle.send('revealed', { round: r });
+          }
         }
         if (event === 'sync') {
           fetchSession();
@@ -329,6 +345,16 @@ export function useGameSession(sessionId: string) {
       set?.delete(h);
     };
   }, []);
+
+  /** Bu cihazda turun cevapları açıldı: partnere bildir (tur başına bir kez) */
+  const markRevealed = useCallback(
+    (r: number) => {
+      if (myRevealed.current.has(r)) return;
+      myRevealed.current.add(r);
+      send('revealed', { round: r });
+    },
+    [send],
+  );
 
   const submitAnswer = useCallback(
     async (answer: Record<string, any>, opts: { round?: number; questionId?: string | null } = {}) => {
@@ -470,6 +496,8 @@ export function useGameSession(sessionId: string) {
     partnerAnswer,
     partnerAnswered,
     partnerFlags,
+    partnerRevealed,
+    markRevealed,
     mineFor,
     partnerFor,
     waiting,

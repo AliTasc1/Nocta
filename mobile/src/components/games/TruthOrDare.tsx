@@ -5,7 +5,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon } from '@/components/ui';
 import { useToast } from '@/providers/ToastProvider';
 import { colors, fonts } from '@/theme';
-import { GameLayout, GameTopBar, haptic, levelName, possessive, PresenceAvatar, RadialGlow, TypingDots, upper, useCompact, useReducedMotion } from './shared';
+import { GameBackground, GameLayout, GameTopBar, haptic, levelName, possessive, PresenceAvatar, TypingDots, upper, useCompact, useReducedMotion } from './shared';
 import type { EngineProps } from './useGameSession';
 
 type Kind = 'truth' | 'dare';
@@ -72,11 +72,10 @@ export function TruthOrDare({ g, onClose }: EngineProps) {
   };
 
   const cardColors: [string, string] = !currentId ? ['#2A1530', '#171016'] : truth ? ['#3A1740', '#1E1220'] : ['#6B1E38', '#2A1530'];
-  const glow = truth ? 'rgba(168,139,240,.28)' : 'rgba(231,104,138,.35)';
 
   return (
     <GameLayout
-      bg={<RadialGlow color={glow} top="48%" />}
+      bg={<GameBackground tone={!currentId ? 'violet' : truth ? 'iris' : 'rose'} />}
       top={
         <GameTopBar
           onClose={onClose}
