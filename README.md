@@ -110,9 +110,7 @@ docs/       Kurulum ve geliştirme rehberi
 - Bağlantı bilgileri depoya eklenmez, yerel `.env` dosyalarında tutulur.
 - 18 yaş sınırı veritabanı seviyesinde uygulanır.
 
-## Başlarken
 
-Kurulum, ortam değişkenleri, yayın ve ödeme entegrasyonu adımları için: **[docs/KURULUM.md](docs/KURULUM.md)**
 
 ---
 
