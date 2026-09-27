@@ -78,14 +78,14 @@ Gereksinim: Node.js 18 ya da üzeri.
 ```bash
 cd admin
 npm install
-cp .env.example .env   # depoda hazır bir .env zaten var
+cp .env.example .env   # sonra kendi Supabase değerlerinizi yazın
 npm run dev            # http://localhost:5173
 ```
 
 ### Ortam değişkenleri (`.env`)
 
 ```
-VITE_SUPABASE_URL=https://eeytvrfsxfxxpyqdoqls.supabase.co
+VITE_SUPABASE_URL=https://<proje-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_...
 # İsteğe bağlı: panel bir alt klasörde yayınlanacaksa
 # VITE_BASE=/admin/

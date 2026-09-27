@@ -2,8 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://eeytvrfsxfxxpyqdoqls.supabase.co';
-export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_Fk01f9SUyu6EooKJ2DAirQ_UzMqitCF';
+// Bağlantı bilgileri mobile/.env dosyasından okunur (git'e eklenmez; örnek: mobile/.env.example)
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Supabase ayarları eksik: mobile/.env dosyasında EXPO_PUBLIC_SUPABASE_URL ve EXPO_PUBLIC_SUPABASE_ANON_KEY tanımlayın.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

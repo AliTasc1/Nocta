@@ -12,7 +12,7 @@ begin;
 insert into public.app_settings (key, value, is_public) values
   ('content_version', '1'::jsonb, true),
   ('free_max_level', '1'::jsonb, true),
-  ('owner_email', '"alitasci8@gmail.com"'::jsonb, false),
+  ('owner_email', '"sahip@ornek.com"'::jsonb, false),
   ('support_email', '"destek@nocta.app"'::jsonb, true),
   ('min_app_version', '"1.0.0"'::jsonb, true),
   ('announcement', 'null'::jsonb, true),

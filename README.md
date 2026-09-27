@@ -1,106 +1,121 @@
-# Nocta
+<div align="center">
 
-Çiftler için 18+ oyun uygulaması. Bu depo üç parçadan oluşur:
+# noc*ta*
 
-| Klasör | İçerik |
+**Çiftler için gece oyunları, sohbet ve anılar — yalnızca ikinize ait bir oda.**
+
+18+ · iOS & Android · Türkçe
+
+</div>
+
+---
+
+## Nocta nedir?
+
+Nocta, yetişkin çiftlerin birbirini daha iyi tanıması, birlikte eğlenmesi ve bağını güçlendirmesi için tasarlanmış bir mobil uygulamadır. İki partner davet koduyla eşleşir, kendi seviyelerini seçer ve iki ayrı telefondan **gerçek zamanlı** olarak aynı oyunu oynar.
+
+İçerik (oyunlar, kategoriler, sorular, testler, hikâyeler) web tabanlı bir yönetim panelinden yönetilir ve **mağaza güncellemesi gerektirmeden** uygulamaya anında yansır.
+
+## Öne çıkan özellikler
+
+### 🎲 11 farklı oyun
+| Oyun | Nasıl oynanır |
 |---|---|
-| `mobile/` | Android + iOS uygulaması (Expo SDK 57, expo-router, TypeScript) |
-| `admin/` | Web tabanlı yönetim paneli (Vite + React + TypeScript) |
-| `supabase/` | Veritabanı şeması (migrations), başlangıç içeriği (seed), RevenueCat webhook fonksiyonu |
-| `design/` | Claude Design'dan gelen orijinal tasarım dosyaları (referans) |
+| Doğruluk mu Cesaret mi | Sırayla kart çekilir, seviyeye göre ayarlanır |
+| Hangisini Seçerdin / Bu mu Şu mu | İki seçenek, gizli seçim, eşleşme kontrolü |
+| Beni Ne Kadar Tanıyorsun | Biri kendini anlatır, diğeri tahmin eder |
+| Gizli Sorular | Cevaplar gizli yazılır, aynı anda açılır |
+| Çift Görevleri | Zamanlı ve zamansız görevler |
+| Çift Testleri | 4 seçenekli uyum ve bilgi testleri |
+| Emojilerle Anlat | Emoji şıklar, animasyonlu doğru/yanlış efektleri |
+| Kart Seç | Resimli kartlar, dönme efektiyle açılış |
+| Çift Hikâyesi | Birlikte seçim yapılan dallanan hikâyeler |
+| Sohbet Oyunu | Sohbet içinden görev gönderme |
 
-Arka uç: Supabase projesi **ayla** (`eeytvrfsxfxxpyqdoqls`, eu-central-1). Şema, içerik ve fonksiyonlar bu projeye **kurulu durumda**.
+Tüm oyunlarda cevaplar **iki taraf da cevaplamadan görünmez**, ardından 3-2-1 geri sayımıyla birlikte açılır.
 
----
+### 💞 Çift deneyimi
+- Davet kodu / QR ile eşleşme, çift odası
+- **Çift rıza seviyesi:** iki partnerin seçtiği seviyenin düşük olanı geçerli olur
+- Flört seviyesi (XP), günlük görev ve seri, rozetler, anı zaman çizelgesi
+- Partner oyun başlattığında sesli "çağrı" bildirimi
 
-## 1. Uygulamayı Expo Go ile test etme (iki telefon)
+### 🔒 Gizlilik
+- Tek seferlik (bir kez açılan) fotoğraf ve video
+- Sohbet ekranında ekran görüntüsü engeli ve alındığında karşı tarafa bildirim
+- Kaybolan mesajlar, bildirim önizlemesini gizleme, biyometrik uygulama kilidi
+- Sohbeti, anıları veya hesabı tek dokunuşla silme
 
-Bilgisayarda (Node 20+):
+### 🛠️ Yönetim paneli
+Genel bakış ve analitik, kullanıcı/çift yönetimi, sınırsız kategori ve soru (toplu içe/dışa aktarma), test ve kart editörleri (görsel yükleme), dallanan hikâye editörü, raporlar, abonelikler, ödemeler, tanıtım kampanyası takibi ve rol tabanlı yetkilendirme.
 
-```bash
-cd mobile
-npm install
-npx expo start --tunnel     # telefonlar farklı ağlardaysa --tunnel, aynı Wi-Fi'daysa sadece: npx expo start
+## Teknolojiler
+
+| Katman | Teknoloji |
+|---|---|
+| Mobil | React Native · **Expo SDK 57** · Expo Router · TypeScript · Reanimated · expo-video / image / notifications / screen-capture |
+| Yönetim paneli | **React 18** · Vite · TypeScript · React Router |
+| Arka uç | **Supabase** — PostgreSQL, Row Level Security, Realtime, Storage, Edge Functions (Deno) |
+| Ödeme | RevenueCat (webhook ile abonelik senkronizasyonu) |
+| Dağıtım | EAS Build / Submit (mağazalar), statik barındırma (panel) |
+
+## Mimari
+
+```mermaid
+flowchart LR
+  subgraph İstemciler
+    A[📱 Mobil uygulama<br/>Expo / React Native]
+    B[🖥️ Yönetim paneli<br/>React + Vite]
+  end
+  subgraph Supabase
+    DB[(PostgreSQL<br/>+ RLS)]
+    RT[Realtime]
+    ST[Storage]
+    EF[Edge Functions]
+  end
+  RC[RevenueCat]
+  A <-->|RPC / sorgular| DB
+  A <-->|oyun senkronu, sohbet| RT
+  A -->|medya| ST
+  A -->|tek seferlik medya| EF
+  B <-->|içerik ve yönetim| DB
+  B -->|kart görselleri| ST
+  RC -->|webhook| EF
+  DB -->|push| X[Expo Push]
 ```
 
-1. İki telefona da **Expo Go** uygulamasını (App Store / Google Play) kurun.
-2. Terminalde çıkan QR kodu okutun (iPhone: Kamera uygulaması, Android: Expo Go içinden).
-3. Birinci telefon: kayıt ol → profil → ruh hâli → seviye → **davet kodu** görünür.
-4. İkinci telefon: kayıt ol → … → davet ekranında **"Kodum var · Katıl"** → kodu gir (ya da QR'ı uygulama içi tarayıcıyla okut).
-5. "Bağlandınız" ekranı iki telefonda da açılır. Bir oyun seçin → lobi → ikiniz de **Hazırım** → 3-2-1 → oyun.
+- **Oyun senkronizasyonu:** oturum durumu veritabanında tutulur; iki cihaz Realtime ile anlık güncellenir.
+- **Gizli cevaplar sunucuda korunur:** partnerin cevabı, siz cevaplamadan veritabanı kuralları gereği size gönderilmez.
+- **İçerik güncellemeleri:** içerik değiştiğinde sürüm numarası artar, uygulama yeni içeriği indirip cihazda önbelleğe alır.
 
-> ⚠️ **E-posta doğrulaması:** Supabase varsayılan olarak kayıttan sonra doğrulama e-postası gönderir ve ücretsiz planda saatte yalnızca birkaç e-posta atabilir. Test sırasında takılmamak için:
-> Supabase Panel → **Authentication → Sign In / Providers → Email → "Confirm email"** seçeneğini kapatın. (Yayından önce tekrar açıp kendi SMTP sunucunuzu tanımlamanızı öneririm: Authentication → Emails → SMTP Settings.)
+## Proje yapısı
 
-> ℹ️ **Push bildirimleri:** Android'de Expo Go uzaktan bildirim desteklemez (Expo SDK 53+ kısıtı). Uygulama içi bildirim listesi ve gerçek zamanlı güncellemeler Expo Go'da da çalışır. Push için `mobile/` içinde bir kez `npx eas-cli@latest init` çalıştırın (EAS projectId oluşturur); geliştirme/mağaza derlemelerinde push otomatik çalışır.
-
-> ℹ️ `nocta://join/KOD` bağlantıları Expo Go'da açılmaz (Expo Go kendi `exp://` şemasını kullanır). Testte kodu elle girin ya da uygulama içi QR tarayıcıyı kullanın. Mağaza derlemesinde bağlantılar çalışır.
-
----
-
-## 2. Yönetim paneli
-
-```bash
-cd admin
-npm install
-npm run build        # çıktı: admin/dist/
+```
+mobile/     Mobil uygulama (Expo)
+  src/app/          Ekranlar (dosya tabanlı yönlendirme)
+  src/components/   Arayüz bileşenleri ve oyun motorları
+  src/lib/          Supabase istemcisi, bildirimler, medya, yardımcılar
+  src/providers/    Oturum, içerik ve bildirim durumları
+admin/      Yönetim paneli (React + Vite)
+supabase/   Veritabanı şeması (migrations), başlangıç içeriği (seed), edge fonksiyonları
+design/     Arayüz tasarım dosyaları
+docs/       Kurulum ve geliştirme rehberi
 ```
 
-`dist/` klasörünü sunucunuza yükleyin. Nginx / Apache örnek ayarları `admin/deploy/` içinde (tek sayfa uygulaması için tüm yollar `index.html`'e yönlenmeli). Ayrıntılar: `admin/README.md`.
+## Güvenlik yaklaşımı
 
-**İlk yönetici hesabı:** Panelde **"Hesap oluştur"** ile `alitasci8@gmail.com` adresiyle kayıt olun, sonra giriş yapın. Yönetici tablosu boşken bu adres otomatik olarak **sahip (owner)** olur. Diğer yöneticileri Ayarlar → Yöneticiler bölümünden eklersiniz (önce o kişinin bir hesabı olmalı).
+- Tüm tablolarda **satır düzeyi güvenlik (RLS)**; kullanıcılar yalnızca kendi ve partnerlerinin verisine erişir.
+- Yönetici işlemleri rol kontrollü sunucu fonksiyonlarıyla yapılır.
+- Uygulama yalnızca herkese açık (publishable) anahtarı kullanır; yetkili anahtarlar yalnızca sunucu tarafındaki fonksiyonlarda bulunur.
+- Bağlantı bilgileri depoya eklenmez, yerel `.env` dosyalarında tutulur.
+- 18 yaş sınırı veritabanı seviyesinde uygulanır.
 
-**Panelde yapabilecekleriniz:** genel bakış ve analitik, kullanıcı askıya alma/silme, çiftler (premium verme/kaldırma, bağlantı sonlandırma), oyunlar, **sınırsız kategori**, **sınırsız soru** (tek tek veya toplu içe aktarma, CSV dışa aktarma), görevler, dallanan hikâye editörü, raporlar, abonelikler, ödemeler, uygulama ayarları (ücretsiz seviye sınırı, fiyatlar, duyuru bandı, destek e-postası).
+## Başlarken
 
-**İçerik güncellemeleri mağaza güncellemesi gerektirmez:** Panelde bir kategori/soru eklediğiniz, değiştirdiğiniz veya kapattığınız anda veritabanındaki `content_version` değişir; uygulama bunu gerçek zamanlı algılayıp yeni içeriği indirir ve cihazda saklar (çevrimdışıyken önbellekten çalışır).
-
-**Premium testi:** RevenueCat bağlanana kadar panelde Çiftler → ilgili çift → **Premium ver** ile istediğiniz gün sayısı kadar premium açabilirsiniz (Cesur/Vahşi seviyeler, premium kategoriler, premium hikâye).
-
----
-
-## 3. Veritabanı (Supabase)
-
-- `supabase/migrations/` — sırasıyla uygulanmış SQL dosyaları (tablolar, satır düzeyi güvenlik, oyun/eşleşme/sohbet fonksiyonları, yönetici fonksiyonları, realtime, depolama, zamanlanmış temizlik).
-- `supabase/seed/seed.sql` — başlangıç içeriği: 8 oyun, 23 kategori, 357 soru, 2 dallanan hikâye, 10 rozet. `gen_seed.py` ile yeniden üretilebilir, `check_seed.py` ile doğrulanır.
-- Yeni bir Supabase projesine kurmak için: migration dosyalarını sırayla, ardından `seed.sql`'i SQL Editor'de çalıştırın.
-
-Güvenlik özeti: her tabloda RLS açık; kullanıcılar yalnızca kendi ve partnerlerinin verisini görür; oyunlarda partnerin cevabı ancak siz de cevapladıktan sonra görünür; 18 yaş altı doğum tarihi veritabanında reddedilir; mesajları yalnızca gönderen düzenleyebilir; bağlantı koptuğunda eski sohbet/anılar erişilemez olur.
+Kurulum, ortam değişkenleri, yayın ve ödeme entegrasyonu adımları için: **[docs/KURULUM.md](docs/KURULUM.md)**
 
 ---
 
-## 4. RevenueCat (sonraki aşama)
-
-Hazır olanlar:
-- `supabase/functions/revenuecat-webhook` — **yayında** (`https://eeytvrfsxfxxpyqdoqls.supabase.co/functions/v1/revenuecat-webhook`). Satın alma/yenileme/iptal olaylarını `subscriptions` ve `payments` tablolarına yazar; abonelik çiftin ikisini birden kapsar.
-- `mobile/src/lib/purchases.ts` — `getOfferings`, `purchase`, `restore` yer tutucuları; Premium ekranı bunları kullanıyor.
-
-Yapılacaklar:
-1. `cd mobile && npx expo install react-native-purchases` (Expo Go'da çalışmaz; geliştirme derlemesi gerekir: `npx eas-cli@latest build --profile development`).
-2. `purchases.ts` içindeki TODO'ları doldurun; girişten sonra `Purchases.logIn(<supabase kullanıcı id>)` çağırın.
-3. Supabase → Edge Functions → Secrets: `REVENUECAT_WEBHOOK_SECRET` = uzun rastgele bir değer.
-4. RevenueCat → Integrations → Webhooks: yukarıdaki URL, Authorization: `Bearer <aynı değer>`.
-5. Ürün kimliklerinde `monthly`/`aylik` ya da `yearly`/`annual`/`yillik` geçsin (plan eşlemesi buna göre yapılır).
-
----
-
-## 5. Mağazalara yayın
-
-```bash
-cd mobile
-npx eas-cli@latest login
-npx eas-cli@latest init                  # projectId (push için de gerekli)
-npx eas-cli@latest build --platform all  # Android .aab + iOS .ipa
-npx eas-cli@latest submit --platform all
-```
-
-Paket kimlikleri `mobile/app.json` içinde: `app.nocta.android` / `app.nocta.ios` — kendi alan adınıza göre değiştirebilirsiniz (ilk yayından sonra değiştirilemez). Uygulama simgesi ve açılış görseli şu an Expo şablonununkiler; `mobile/assets/images/` içindeki dosyaları Nocta görselleriyle değiştirin. Mağaza incelemesi için 18+ yaş sınırı, gizlilik politikası ve kullanım koşulları bağlantıları gerekecek.
-
----
-
-## Bilinen sınırlamalar
-
-- Sohbet **uçtan uca şifreli değildir** (veriler Supabase'de TLS ve erişim kurallarıyla korunur). Uygulama metinlerinde bu iddia kullanılmadı.
-- Sesli mesaj, GIF, Apple/Google ile giriş ve "uygulama simgesini gizle" henüz yok.
-- Sohbet silindiğinde fotoğraf dosyaları depolamada kalır (mesaj kayıtları silinir, dosyalara erişim kalmaz).
-- Tasarımdaki görsel alanlar (hero, hikâye sahneleri) şimdilik renkli yer tutucular; hikâye sahneleri admin panelinde `art_note` alanıyla tarif ediliyor.
-- Oyunlar iki telefonda gerçek zamanlı test edilmedi; arka uç akışları SQL üzerinden uçtan uca doğrulandı, iOS ve Android paketleri hatasız derleniyor.
+<div align="center">
+© 2026 Nocta · Tüm hakları saklıdır.
+</div>

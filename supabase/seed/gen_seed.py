@@ -567,7 +567,7 @@ ACH = [
 SETTINGS = [
     ("content_version", 1, True),
     ("free_max_level", 1, True),
-    ("owner_email", "alitasci8@gmail.com", False),
+    ("owner_email", "sahip@ornek.com", False),
     ("support_email", "destek@nocta.app", True),
     ("min_app_version", "1.0.0", True),
     ("announcement", None, True),

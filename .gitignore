@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 __pycache__/
 *.log
+
+# Ortam değişkenleri (gizli tutulur)
+.env
+.env.*
+!.env.example
