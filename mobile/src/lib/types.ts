@@ -12,7 +12,9 @@ export type Engine =
   | 'emoji'
   | 'cards'
   | 'roulette'
-  | 'shots';
+  | 'shots'
+  | 'where'
+  | 'letters';
 
 export type ProfileSettings = {
   blur_previews: boolean;
