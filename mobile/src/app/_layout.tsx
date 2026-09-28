@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppLockGate } from '@/components/AppLockGate';
+import { LetterArrival } from '@/components/LetterArrival';
 import { PartnerCall } from '@/components/PartnerCall';
 import { Loading } from '@/components/ui';
 import { consumeLaunchNotificationRoute, listenNotificationTaps, registerForPush } from '@/lib/push';
@@ -118,6 +119,7 @@ function Root() {
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
       </Stack>
+      {session && !booting ? <LetterArrival /> : null}
       {session && !booting ? <PartnerCall /> : null}
       {booting ? (
         <View style={StyleSheet.absoluteFill}>
