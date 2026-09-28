@@ -5,15 +5,18 @@ import { AccessibilityInfo, ActivityIndicator, Animated, Easing, KeyboardAvoidin
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Icon, T } from '@/components/ui';
+import { useSfxMuted } from '@/lib/sfx';
 import type { Question } from '@/lib/types';
 import { colors, fonts, LEVELS } from '@/theme';
+import type { Player } from './types';
 import type { GameApi } from './useGameSession';
+
+// Ortak tipler ayrı modülde (shared ↔ useGameSession döngüsünü kırmak için); eski içe aktarmalar çalışmaya devam eder
+export { finishCache, type FinishResult, type Player } from './types';
 
 // ─────────────────────────────────────────────────────────────
 // Yardımcılar
 // ─────────────────────────────────────────────────────────────
-export type Player = { id: string; name: string; color: string };
-
 export function levelName(n: number | null | undefined) {
   return LEVELS[Math.max(0, Math.min(3, n ?? 0))]?.name ?? 'Yumuşak';
 }
@@ -146,18 +149,6 @@ export function ChoiceGrid({ count, cols, gap, raise, renderItem }: { count: num
   );
 }
 
-/** finish_session sonucunu sonuç ekranına taşımak için bellek içi önbellek */
-export type FinishResult = {
-  xp?: number;
-  matches?: number;
-  rounds?: number;
-  couple_xp?: number;
-  flirt?: { level: number; name: string; floor: number; next: number | null };
-  already?: boolean;
-  session?: Record<string, any>;
-};
-export const finishCache = new Map<string, FinishResult>();
-
 // ─────────────────────────────────────────────────────────────
 // Ortak oyun iskeleti
 // ─────────────────────────────────────────────────────────────
@@ -210,6 +201,26 @@ export function GameTopBar({ onClose, center, right }: { onClose: () => void; ce
   );
 }
 
+/** Üst çubukta küçük ses aç/kapat düğmesi (ayar cihazda saklanır) */
+export function SoundToggle() {
+  const [muted, setMuted] = useSfxMuted();
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel="Oyun sesleri"
+      accessibilityState={{ checked: !muted }}
+      hitSlop={6}
+      onPress={() => {
+        haptic.tap();
+        setMuted(!muted);
+      }}
+      style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,.05)', borderWidth: 1, borderColor: muted ? 'rgba(255,230,240,.08)' : 'rgba(242,194,123,.28)', alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}
+    >
+      <Icon name={muted ? 'volume_off' : 'volume_up'} size={20} color={muted ? colors.mute : colors.warning} />
+    </Pressable>
+  );
+}
+
 export function MetaText({ children, color = colors.mist, style }: { children: React.ReactNode; color?: string; style?: StyleProp<any> }) {
   return (
     <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={1.2} style={[{ fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.5, color, textAlign: 'center' }, style]}>
@@ -222,7 +233,7 @@ export function MetaText({ children, color = colors.mist, style }: { children: R
  * Oyun ekranı gövdesi: üst çubuk + (taşarsa kayan) içerik + sabit alt alan.
  * Güvenli alanlar burada uygulanır.
  */
-export function GameLayout({ top, children, footer, bg, overlay, contentStyle, scroll = true, keyboard }: { top: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode; bg?: React.ReactNode; overlay?: React.ReactNode; contentStyle?: StyleProp<ViewStyle>; scroll?: boolean; keyboard?: boolean }) {
+export function GameLayout({ top, children, footer, bg, overlay, contentStyle, scroll = true, scrollEnabled = true, keyboard }: { top: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode; bg?: React.ReactNode; overlay?: React.ReactNode; contentStyle?: StyleProp<ViewStyle>; scroll?: boolean; scrollEnabled?: boolean; keyboard?: boolean }) {
   const insets = useSafeAreaInsets();
   const { compact } = useCompact();
   const gap = compact ? 12 : 18;
@@ -240,6 +251,7 @@ export function GameLayout({ top, children, footer, bg, overlay, contentStyle, s
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ flexGrow: 1 }}
+            scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             automaticallyAdjustKeyboardInsets={!!keyboard}
@@ -309,7 +321,7 @@ export function GameBackground({ tone = 'violet', accent, intensity = 1 }: { ton
     setLayers((l) => [...l.filter((x) => x.key !== layerKey).slice(-1), { key: layerKey, rgb, strength }]);
   }
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       <LinearGradient colors={[colors.ink, '#150C16', '#1E1024', '#140B15', colors.ink]} locations={[0, 0.22, 0.52, 0.8, 1]} style={StyleSheet.absoluteFill} />
       {layers.map((l, i) => (
         <AccentLayer
@@ -480,8 +492,7 @@ function FabBase({ onPress, loading, label, locked, progress }: { onPress: () =>
     >
       {locked && progress ? (
         <Animated.View
-          pointerEvents="none"
-          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(246,238,241,.2)', height: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }}
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(246,238,241,.2)', height: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }), pointerEvents: 'none' }}
         />
       ) : null}
       <Icon name="arrow_forward" size={24} color={locked ? colors.pearlSoft : colors.onRose} />
@@ -649,10 +660,9 @@ export function RevealCountdown({ count, label = 'Cevaplar açılıyor…' }: { 
 
   return (
     <Animated.View
-      pointerEvents="none"
       accessibilityLiveRegion="assertive"
       accessibilityLabel={visible ? `${label} ${count}` : undefined}
-      style={[StyleSheet.absoluteFill, { opacity: fade, alignItems: 'center', justifyContent: 'center', zIndex: 20 }]}
+      style={[StyleSheet.absoluteFill, { opacity: fade, alignItems: 'center', justifyContent: 'center', zIndex: 20 }, { pointerEvents: 'none' }]}
     >
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(12,8,11,.84)' }]} />
       <View style={{ alignItems: 'center', gap: 18 }}>
@@ -767,8 +777,7 @@ export function AdvanceButton({ gate, title, iconRight = 'arrow_forward', onPres
     >
       {locked ? (
         <Animated.View
-          pointerEvents="none"
-          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(246,238,241,.16)', width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }}
+          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(246,238,241,.16)', width: progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }), pointerEvents: 'none' }}
         />
       ) : null}
       {loading ? (

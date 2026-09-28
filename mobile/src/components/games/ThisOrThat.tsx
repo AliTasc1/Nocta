@@ -100,7 +100,7 @@ export function ThisOrThat({ g, onClose }: EngineProps) {
       ) : (
         <View style={{ flex: 1 }}>
           <BigCard key={`a-${r}`} text={opts[0] ?? ''} side="a" state={mine === '0' ? 'on' : mine === '1' ? 'off' : 'idle'} who={whoFor(0)} onPress={() => pick(0)} disabled={mine != null} />
-          <View pointerEvents="none" style={{ alignSelf: 'center', width: 56, height: 56, marginVertical: -22, zIndex: 2, borderRadius: 28, backgroundColor: colors.ink, borderWidth: 1, borderColor: colors.lineHeavy, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ alignSelf: 'center', width: 56, height: 56, marginVertical: -22, zIndex: 2, borderRadius: 28, backgroundColor: colors.ink, borderWidth: 1, borderColor: colors.lineHeavy, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <Text style={{ fontFamily: fonts.serifItalic, fontSize: 20, color: colors.blush }}>veya</Text>
           </View>
           <BigCard key={`b-${r}`} text={opts[1] ?? ''} side="b" state={mine === '1' ? 'on' : mine === '0' ? 'off' : 'idle'} who={whoFor(1)} onPress={() => pick(1)} disabled={mine != null} />

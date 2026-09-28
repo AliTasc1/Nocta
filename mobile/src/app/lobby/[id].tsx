@@ -261,7 +261,11 @@ export default function LobbyScreen() {
   const info =
     game.engine === 'story'
       ? story?.title ?? 'Etkileşimli hikâye'
-      : `${count} ${game.engine === 'challenges' ? 'görev' : game.engine === 'truth_dare' ? 'kart' : 'soru'} · ${lvl}`;
+      : game.engine === 'roulette'
+        ? `6 yuva · 1 mermi · ${lvl}`
+        : game.engine === 'shots'
+          ? '16 shot · 18+'
+          : `${count} ${game.engine === 'challenges' ? 'görev' : game.engine === 'truth_dare' ? 'kart' : 'soru'} · ${lvl}`;
   const roomCode = `${sessionId.slice(0, 4)}-${sessionId.slice(4, 8)}`.toLocaleUpperCase('tr-TR');
   const avatarSize = compact ? 80 : 92;
 
@@ -300,7 +304,7 @@ export default function LobbyScreen() {
         <View style={{ width: '100%', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18, backgroundColor: 'rgba(23,16,22,.7)', borderWidth: 1, borderColor: colors.line, flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
           <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.medium, fontSize: 13, color: colors.mist }}>{info}</Text>
           <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.medium, fontSize: 13, color: colors.mist }}>
-            {game.engine === 'story' ? 'Birlikte seçin' : 'Pas geçmek serbest'}
+            {game.engine === 'story' ? 'Birlikte seçin' : game.engine === 'roulette' ? 'Yalan yok' : game.engine === 'shots' ? 'Sorumlu iç' : 'Pas geçmek serbest'}
           </Text>
         </View>
 

@@ -78,7 +78,15 @@
           "faceIDPermission": "Uygulama kilidini Face ID ile açmak için kullanılır."
         }
       ],
-      "expo-video"
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

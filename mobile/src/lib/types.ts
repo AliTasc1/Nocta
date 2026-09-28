@@ -10,7 +10,9 @@ export type Engine =
   | 'chat_game'
   | 'quiz'
   | 'emoji'
-  | 'cards';
+  | 'cards'
+  | 'roulette'
+  | 'shots';
 
 export type ProfileSettings = {
   blur_previews: boolean;

@@ -166,12 +166,34 @@ export default function ResultScreen() {
   const isQuizLike = game.engine === 'quiz' || game.engine === 'emoji';
   const quizKnow = isQuizLike && !!quiz && quiz.knowRounds > 0;
   const quizOnlyKnow = quizKnow && quiz!.compatRounds === 0;
-  const copy = isQuizLike ? quizHeadline(quiz, matches, rounds, partnerName, game.engine === 'emoji') : headline(game.engine, matches, rounds);
+  const st = session.state ?? {};
+  const confessions: { by: string; prompt: string | null; text: string }[] = Array.isArray(st.confessions) ? st.confessions : [];
+  const spins: { drinker: string | null }[] = Array.isArray(st.spins) ? st.spins : [];
+  const myShots = spins.filter((x) => x.drinker && x.drinker === userId).length;
+  const partnerShots = spins.filter((x) => x.drinker && x.drinker !== userId).length;
+  const copy = isQuizLike
+    ? quizHeadline(quiz, matches, rounds, partnerName, game.engine === 'emoji')
+    : game.engine === 'roulette'
+      ? confessions.length
+        ? { a: 'Sözleşme', b: 'bozulmadı.' }
+        : { a: 'Mermi bu gece', b: 'sizi sevdi.' }
+      : game.engine === 'shots'
+        ? myShots === partnerShots
+          ? { a: 'Şerefe,', b: 'ikinize de!' }
+          : myShots > partnerShots
+            ? { a: 'Bu gecenin', b: 'şanssızı sensin 🥃' }
+            : { a: 'Şans', b: 'bu gece seninle!' }
+        : headline(game.engine, matches, rounds);
   const bigNumber = quizOnlyKnow
     ? { n: quiz!.myCorrect, of: quiz!.knowRounds }
-    : matchGame || game.engine === 'know_me' || isQuizLike || game.engine === 'cards'
-      ? { n: matches, of: rounds }
-      : { n: rounds, of: null };
+    : game.engine === 'roulette'
+      ? { n: confessions.length, of: null }
+      : game.engine === 'shots'
+        ? { n: myShots + partnerShots, of: null }
+        : matchGame || game.engine === 'know_me' || isQuizLike || game.engine === 'cards'
+          ? { n: matches, of: rounds }
+          : { n: rounds, of: null };
+  const bigUnit = game.engine === 'roulette' ? 'itiraf' : game.engine === 'shots' ? 'shot' : 'tur';
   const bigCaption = isQuizLike
     ? quizOnlyKnow
       ? 'senin doğru cevabın'
@@ -187,6 +209,10 @@ export default function ResultScreen() {
       : { k: 'Uyum', v: rounds ? `%${Math.round((matches / rounds) * 100)} ${game.engine === 'emoji' ? 'aynı emoji' : 'aynı cevap'}` : '—' }
     : game.engine === 'cards'
     ? { k: 'Eşleşme', v: `${matches} / ${rounds} aynı kart` }
+    : game.engine === 'roulette'
+    ? { k: 'Çekilen tetik', v: `${rounds} tetik · ${Math.max(1, Number(st.round ?? 0) + (st.phase === 'loading' ? 0 : 1))} tur` }
+    : game.engine === 'shots'
+    ? { k: 'Kim kaç shot', v: `Sen ${myShots} · ${partnerName} ${partnerShots}` }
     : matchGame
     ? { k: 'En tatlı fark', v: sweetDiff ?? (rounds ? `%${Math.round((matches / rounds) * 100)} uyum` : '—') }
     : game.engine === 'know_me'
@@ -216,7 +242,7 @@ export default function ResultScreen() {
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
           <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: fonts.serif, fontSize: sz(96, 76), lineHeight: sz(100, 80), color: colors.pearl }}>{bigNumber.n}</Text>
-          <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: fonts.serif, fontSize: sz(36, 30), color: colors.mist }}>{bigNumber.of != null ? `/${bigNumber.of}` : 'tur'}</Text>
+          <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: fonts.serif, fontSize: sz(36, 30), color: colors.mist }}>{bigNumber.of != null ? `/${bigNumber.of}` : bigUnit}</Text>
         </View>
         {bigCaption ? <Text style={{ marginTop: -sz(14, 10), fontFamily: fonts.medium, fontSize: 13, color: colors.mist, textAlign: 'center' }}>{bigCaption}</Text> : null}
 
@@ -224,6 +250,26 @@ export default function ResultScreen() {
           <Stat k="Kazanılan" v={`+${xp} XP`} accent />
           <Stat k={second.k} v={second.v} />
         </View>
+
+        {game.engine === 'roulette' && confessions.length ? (
+          <View style={{ width: '100%', gap: 8 }}>
+            <Text style={{ fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.6, color: colors.blush }}>İTİRAFLAR</Text>
+            {confessions.map((c, i) => (
+              <View key={i} style={{ padding: 14, borderRadius: 18, backgroundColor: colors.velvet, borderWidth: 1, borderColor: colors.line, gap: 4 }}>
+                <Text style={{ fontFamily: fonts.bold, fontSize: 12, color: colors.blush }}>{c.by === userId ? 'Sen' : partnerName}</Text>
+                {c.prompt ? <Text style={{ fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 17, color: colors.mist }}>{c.prompt}</Text> : null}
+                <Text style={{ fontFamily: fonts.serifItalic, fontSize: 19, lineHeight: 24, color: colors.pearl }}>{c.text ? `“${c.text}”` : 'Sesli itiraf etti 🎙️'}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {game.engine === 'shots' ? (
+          <View style={{ width: '100%', flexDirection: 'row', gap: 10 }}>
+            <Stat k="Sen" v={`${myShots} shot 🥃`} />
+            <Stat k={partnerName} v={`${partnerShots} shot 🥃`} />
+          </View>
+        ) : null}
 
         <View style={{ width: '100%', gap: 6 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>

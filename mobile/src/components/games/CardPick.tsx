@@ -270,7 +270,7 @@ function PickCard({
 
   return (
     <Animated.View style={{ width, height, zIndex: celebrate ? 5 : emphasized ? 2 : 1, opacity: state === 'dim' ? 0.5 : 1, transform: [{ perspective: 900 }, { translateY }, { scale }, { rotateY }] }}>
-      {glow ? <View pointerEvents="none" style={{ position: 'absolute', top: -5, left: -5, right: -5, bottom: -5, borderRadius: 25, backgroundColor: glow, opacity: 0.55 }} /> : null}
+      {glow ? <View style={{ position: 'absolute', top: -5, left: -5, right: -5, bottom: -5, borderRadius: 25, backgroundColor: glow, opacity: 0.55, pointerEvents: 'none' }} /> : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${title} kartı${a11yWho}`}
@@ -321,7 +321,7 @@ function PickCard({
           </Animated.View>
         ) : null}
         {/* Kartın arka yüzü (çevirme sırasında) */}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: flip ? backOpacity : 0, alignItems: 'center', justifyContent: 'center' }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: flip ? backOpacity : 0, alignItems: 'center', justifyContent: 'center' }, { pointerEvents: 'none' }]}>
           <LinearGradient colors={['#E7688A', '#6B1E38']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <Icon name="favorite" size={Math.round(width * 0.28)} color="rgba(26,7,16,.55)" />
         </Animated.View>

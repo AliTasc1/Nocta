@@ -23,6 +23,7 @@ const FILTERS: Filter[] = [
   { key: 'questions', label: 'Sorular', test: is('would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'quiz', 'emoji', 'cards') },
   { key: 'dare', label: 'Cesaret & Görev', test: is('truth_dare', 'challenges') },
   { key: 'story', label: 'Hikâye', test: is('story') },
+  { key: 'party', label: 'Parti', test: is('roulette', 'shots') },
   { key: 'chat', label: 'Sohbet', test: is('chat_game') },
 ];
 

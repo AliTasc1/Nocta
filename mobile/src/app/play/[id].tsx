@@ -9,7 +9,9 @@ import { Challenges } from '@/components/games/Challenges';
 import { EmojiGame } from '@/components/games/EmojiGame';
 import { KnowMe } from '@/components/games/KnowMe';
 import { Quiz } from '@/components/games/Quiz';
+import { Roulette } from '@/components/games/Roulette';
 import { SecretQuestions } from '@/components/games/SecretQuestions';
+import { Shots } from '@/components/games/Shots';
 import { Story } from '@/components/games/Story';
 import { ThisOrThat } from '@/components/games/ThisOrThat';
 import { TruthOrDare } from '@/components/games/TruthOrDare';
@@ -135,6 +137,12 @@ export default function PlayScreen() {
         break;
       case 'cards':
         body = <CardPick {...props} />;
+        break;
+      case 'roulette':
+        body = <Roulette {...props} />;
+        break;
+      case 'shots':
+        body = <Shots {...props} />;
         break;
       default:
         body = (

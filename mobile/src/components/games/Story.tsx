@@ -152,12 +152,12 @@ export function Story({ g, onClose }: EngineProps) {
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <GameBackground accent={glow} intensity={1.25} />
       {/* Çizgili doku */}
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden', opacity: 0.5 }]}>
+      <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', opacity: 0.5 }, { pointerEvents: 'none' }]}>
         {Array.from({ length: 40 }).map((_, i) => (
           <View key={i} style={{ position: 'absolute', top: -200, left: i * 20 - 200, width: 1, height: height * 1.6, backgroundColor: 'rgba(255,230,240,.035)', transform: [{ rotate: '45deg' }] }} />
         ))}
       </View>
-      <LinearGradient pointerEvents="none" colors={['rgba(12,8,11,0)', 'rgba(12,8,11,.72)', 'rgba(12,8,11,.9)']} locations={[0, 0.35, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%' }} />
+      <LinearGradient colors={['rgba(12,8,11,0)', 'rgba(12,8,11,.72)', 'rgba(12,8,11,.9)']} locations={[0, 0.35, 1]} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%', pointerEvents: 'none' }} />
 
       <View style={{ flex: 1, paddingTop: insets.top + 6, paddingLeft: insets.left, paddingRight: insets.right }}>
         <View style={{ paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

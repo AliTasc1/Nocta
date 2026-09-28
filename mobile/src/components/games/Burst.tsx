@@ -80,7 +80,7 @@ export function Burst({
   // Parçacıklar başta ve sonda saydam; oynatılmadıysa hiç çizilmez
   if (reduced || !play) return null;
   return (
-    <View pointerEvents="none" style={[styles.origin, style]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <View style={[styles.origin, style, { pointerEvents: 'none' }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {particles.map((p, i) => {
         const v = progress[i];
         return (

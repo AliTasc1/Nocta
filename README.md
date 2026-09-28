@@ -18,7 +18,7 @@ Nocta, yetişkin çiftlerin birbirini daha iyi tanıması, birlikte eğlenmesi v
 
 ## Öne çıkan özellikler
 
-### 🎲 11 farklı oyun
+### 🎲 13 farklı oyun
 | Oyun | Nasıl oynanır |
 |---|---|
 | Doğruluk mu Cesaret mi | Sırayla kart çekilir, seviyeye göre ayarlanır |
@@ -31,6 +31,8 @@ Nocta, yetişkin çiftlerin birbirini daha iyi tanıması, birlikte eğlenmesi v
 | Kart Seç | Resimli kartlar, dönme efektiyle açılış |
 | Çift Hikâyesi | Birlikte seçim yapılan dallanan hikâyeler |
 | Sohbet Oyunu | Sohbet içinden görev gönderme |
+| Rus Ruleti | İmzalı dürüstlük sözleşmesi, tamburda tek mermi; kime patlarsa itiraf eder |
+| Shot Ruleti | 16 kadehli tepsi ve rulet; 4 sayılık aralık seç, tutmazsa partner içer |
 
 Tüm oyunlarda cevaplar **iki taraf da cevaplamadan görünmez**, ardından 3-2-1 geri sayımıyla birlikte açılır.
 

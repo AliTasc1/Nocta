@@ -8,7 +8,7 @@ import { useApp } from '@/providers/AppProvider';
 import { loadQuestions, useContent } from '@/providers/ContentProvider';
 import { useToast } from '@/providers/ToastProvider';
 import { joinGameChannel, type GameChannelHandle } from './gameChannel';
-import { finishCache, type FinishResult, type Player } from './shared';
+import { finishCache, type FinishResult, type Player } from './types';
 
 type BroadcastHandler = (payload: Record<string, any>) => void;
 
@@ -439,6 +439,28 @@ export function useGameSession(sessionId: string) {
   );
 
   /**
+   * Oturum satırını döndüren bir oyun RPC'sini çağır (ör. roulette_pull, shots_spin).
+   * Dönen satır hemen uygulanır (eylemi yapan anında görür) ve partnere 'sync' yayınlanır.
+   */
+  const rpc = useCallback(
+    async (fn: string, args: Record<string, any> = {}) => {
+      const s = sessionRef.current;
+      if (!s || s.status !== 'playing') return null;
+      const { data, error: e } = await supabase.rpc(fn, { p_session: s.id, ...args });
+      if (e) {
+        showToast(errorText(e), 'error');
+        fetchSession();
+        return null;
+      }
+      const row = (Array.isArray(data) ? data[0] : data) as GameSession | null;
+      if (row && row.id) applySession(row);
+      send('sync');
+      return row;
+    },
+    [applySession, fetchSession, send, showToast],
+  );
+
+  /**
    * `from` turundan bir sonrakine geç (sonuncuysa bitir). İndeks mutlak gönderildiği
    * için iki telefonun aynı anda basması aynı sonucu verir; sunucu çoktan ilerlediyse
    * çağrı yapılmaz.
@@ -512,6 +534,7 @@ export function useGameSession(sessionId: string) {
     fetchAnswers,
     submitAnswer,
     updateSession,
+    rpc,
     advance,
     finish,
     cancel,

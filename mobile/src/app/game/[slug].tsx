@@ -62,7 +62,9 @@ export default function GameDetailScreen() {
     );
   }
 
-  const cats = game.engine === 'story' ? [] : content.categoriesFor(game.id);
+  // Masa oyunları (Rus Ruleti, Shot Ruleti) kategori seçimi kullanmaz: itiraf soruları tüm setlerden gelir
+  const tableGame = game.engine === 'roulette' || game.engine === 'shots';
+  const cats = game.engine === 'story' || tableGame ? [] : content.categoriesFor(game.id);
   const freeMax = Number(content.settings?.free_max_level ?? 1);
   const cap = isPremium ? 3 : Number.isFinite(freeMax) ? freeMax : 1;
   const level = Math.max(0, Math.min(profile?.level ?? 0, partner?.level ?? 3, cap));
@@ -129,7 +131,15 @@ export default function GameDetailScreen() {
         <T v="body">{game.description}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <MetaChip icon="schedule" text={game.duration_label} />
-          {game.engine !== 'story' ? <MetaChip icon="style" text={`${content.questionCount(game.id, category)} soru`} /> : <MetaChip icon="movie" text="Seçimli hikâye" />}
+          {game.engine === 'story' ? (
+            <MetaChip icon="movie" text="Seçimli hikâye" />
+          ) : game.engine === 'roulette' ? (
+            <MetaChip icon="gps_fixed" text="6 yuva · 1 mermi" />
+          ) : game.engine === 'shots' ? (
+            <MetaChip icon="local_bar" text="16 shot · 18+" />
+          ) : (
+            <MetaChip icon="style" text={`${content.questionCount(game.id, category)} soru`} />
+          )}
         </View>
       </TintCard>
 
@@ -155,22 +165,26 @@ export default function GameDetailScreen() {
             </Card>
           ) : null}
 
-          <Card style={{ marginTop: 16, gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Icon name="local_fire_department" size={22} color={colors.blush} />
-              <T v="title" style={{ flex: 1 }}>{`Ortak seviyeniz: ${LEVELS[level]?.name ?? 'Yumuşak'}`}</T>
-            </View>
-            <T v="bodySm">
-              {levelCapped
-                ? `Ücretsiz planda sorular ${LEVELS[cap]?.name ?? 'Flörtöz'} seviyesine kadar açılır. Daha cesur sorular Premium ile gelir.`
-                : 'İkinizin seçtiği seviyelerin en düşüğü kullanılır; kimse rahatsız olacağı bir soruyla karşılaşmaz.'}
-            </T>
-            {levelCapped ? (
-              <Pressable accessibilityRole="button" onPress={() => router.push('/premium')} style={{ minHeight: 44, justifyContent: 'center' }}>
-                <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.blush }}>Premium’u incele →</Text>
-              </Pressable>
-            ) : null}
-          </Card>
+          {tableGame ? <TableRules engine={game.engine} /> : null}
+
+          {game.engine !== 'shots' ? (
+            <Card style={{ marginTop: 16, gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Icon name="local_fire_department" size={22} color={colors.blush} />
+                <T v="title" style={{ flex: 1 }}>{`Ortak seviyeniz: ${LEVELS[level]?.name ?? 'Yumuşak'}`}</T>
+              </View>
+              <T v="bodySm">
+                {levelCapped
+                  ? `Ücretsiz planda sorular ${LEVELS[cap]?.name ?? 'Flörtöz'} seviyesine kadar açılır. Daha cesur sorular Premium ile gelir.`
+                  : 'İkinizin seçtiği seviyelerin en düşüğü kullanılır; kimse rahatsız olacağı bir soruyla karşılaşmaz.'}
+              </T>
+              {levelCapped ? (
+                <Pressable accessibilityRole="button" onPress={() => router.push('/premium')} style={{ minHeight: 44, justifyContent: 'center' }}>
+                  <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.blush }}>Premium’u incele →</Text>
+                </Pressable>
+              ) : null}
+            </Card>
+          ) : null}
 
           {cats.length ? (
             <View style={{ marginTop: 24 }}>
@@ -243,6 +257,36 @@ export default function GameDetailScreen() {
         </>
       )}
     </Screen>
+  );
+}
+
+const RULES: Record<string, { icon: string; text: string }[]> = {
+  roulette: [
+    { icon: 'draw', text: 'Önce dürüstlük sözleşmesini parmağınızla imzalarsınız.' },
+    { icon: 'gps_fixed', text: 'Tambura tek mermi konur; yeri ikinizden de gizlidir.' },
+    { icon: 'touch_app', text: 'Sırayla tetiği çekersiniz. Kimde patlarsa bir itirafta bulunur.' },
+    { icon: 'volume_up', text: 'Oyunun sesleri var; sessize almak için oyunda hoparlöre dokun.' },
+  ],
+  shots: [
+    { icon: 'tune', text: 'Sırayla 4 sayılık bir aralık seçip ruleti çevirirsiniz.' },
+    { icon: 'celebration', text: 'Top aralığına düşerse kurtulursun.' },
+    { icon: 'local_bar', text: 'Düşmezse topun rengi konuşur: kırmızıysa kırmızı, siyahsa siyah içer.' },
+    { icon: 'info', text: '18+ · Shot yerine istediğin bir içecek de olur · Sorumlu iç.' },
+  ],
+};
+
+function TableRules({ engine }: { engine: string }) {
+  const rules = RULES[engine] ?? [];
+  return (
+    <Card style={{ marginTop: 16, gap: 12 }}>
+      <T v="label">NASIL OYNANIR</T>
+      {rules.map((r) => (
+        <View key={r.text} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <Icon name={r.icon} size={18} color={colors.blush} />
+          <T v="bodySm" color={colors.pearlSoft} style={{ flex: 1 }}>{r.text}</T>
+        </View>
+      ))}
+    </Card>
   );
 }
 

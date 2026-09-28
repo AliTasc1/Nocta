@@ -364,7 +364,7 @@ function EmojiTile({
         })}
       >
         {gradient ? <LinearGradient colors={['#6B1E38', colors.velvet]} start={{ x: 0, y: 0 }} end={{ x: 0.9, y: 0.9 }} style={StyleSheet.absoluteFill} /> : null}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(240,80,90,.55)', opacity: flash }]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(240,80,90,.55)', opacity: flash }, { pointerEvents: 'none' }]} />
         <Text allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontSize, lineHeight: fontSize * 1.25, textAlign: 'center', paddingHorizontal: 8 }}>
           {emoji}
         </Text>
