@@ -5,11 +5,11 @@ import { AppState, Platform } from 'react-native';
 // Bağlantı bilgileri mobile/.env dosyasından okunur (git'e eklenmez; örnek: mobile/.env.example)
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Supabase ayarları eksik: mobile/.env dosyasında EXPO_PUBLIC_SUPABASE_URL ve EXPO_PUBLIC_SUPABASE_ANON_KEY tanımlayın.');
-}
+// Eksikse modül seviyesinde hata fırlatmıyoruz: aksi hâlde tüm ekranlar yüklenemez.
+// Kök layout bu durumda tek bir açıklayıcı ekran gösterir.
+export const SUPABASE_CONFIGURED = !!SUPABASE_URL && !!SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(SUPABASE_URL || 'https://ayar-eksik.invalid', SUPABASE_ANON_KEY || 'ayar-eksik', {
   auth: {
     storage: Platform.OS === 'web' && typeof window === 'undefined' ? undefined : AsyncStorage,
     autoRefreshToken: true,

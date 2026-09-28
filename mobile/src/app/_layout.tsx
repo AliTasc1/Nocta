@@ -15,7 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -23,6 +23,7 @@ import { AppLockGate } from '@/components/AppLockGate';
 import { PartnerCall } from '@/components/PartnerCall';
 import { Loading } from '@/components/ui';
 import { consumeLaunchNotificationRoute, listenNotificationTaps, registerForPush } from '@/lib/push';
+import { SUPABASE_CONFIGURED } from '@/lib/supabase';
 import { AppProvider, useApp } from '@/providers/AppProvider';
 import { ContentProvider } from '@/providers/ContentProvider';
 import { ToastProvider } from '@/providers/ToastProvider';
@@ -144,6 +145,20 @@ export default function RootLayout() {
   });
 
   if (!fontsLoaded && !fontError) return null;
+
+  if (!SUPABASE_CONFIGURED) {
+    SplashScreen.hideAsync().catch(() => {});
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.ink, justifyContent: 'center', padding: 24, gap: 12 }}>
+        <StatusBar style="light" />
+        <Text style={{ color: colors.pearl, fontSize: 20, fontWeight: '700' }}>Bağlantı ayarları eksik</Text>
+        <Text style={{ color: colors.mist, fontSize: 15, lineHeight: 22 }}>
+          mobile/.env dosyası bulunamadı ya da boş. EXPO_PUBLIC_SUPABASE_URL ve EXPO_PUBLIC_SUPABASE_ANON_KEY değerlerini ekleyip
+          sunucuyu “npx expo start -c” ile yeniden başlatın.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.ink }}>
