@@ -1,7 +1,7 @@
 export type Role = 'owner' | 'moderator' | 'content' | 'support';
 export type Engine =
   | 'truth_dare' | 'would_you_rather' | 'know_me' | 'challenges'
-  | 'secret_questions' | 'this_or_that' | 'story' | 'chat_game' | 'quiz' | 'emoji' | 'cards';
+  | 'secret_questions' | 'this_or_that' | 'story' | 'chat_game' | 'quiz' | 'emoji' | 'cards' | 'roulette' | 'shots';
 export type Tone = 'ok' | 'warn' | 'bad' | 'pro' | 'rose' | 'mute';
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -12,7 +12,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 export const ROLE_TONE: Record<Role, Tone> = { owner: 'rose', moderator: 'pro', content: 'pro', support: 'mute' };
 
-export const ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'challenges', 'secret_questions', 'this_or_that', 'story', 'chat_game', 'quiz', 'emoji', 'cards'];
+export const ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'challenges', 'secret_questions', 'this_or_that', 'story', 'chat_game', 'quiz', 'emoji', 'cards', 'roulette', 'shots'];
 export const ENGINE_LABEL: Record<Engine, string> = {
   truth_dare: 'Doğruluk mu Cesaret mi',
   would_you_rather: 'Hangisini Tercih Edersin',
@@ -25,6 +25,8 @@ export const ENGINE_LABEL: Record<Engine, string> = {
   quiz: 'Test (4 seçenek)',
   emoji: 'Emoji (emoji şıklar)',
   cards: 'Kart Seç (resimli kartlar)',
+  roulette: 'Rus Ruleti (itiraf soruları)',
+  shots: 'Shot Ruleti (içerik gerekmez)',
 };
 export const ENGINE_SHORT: Record<Engine, string> = {
   truth_dare: 'DOĞRULUK / CESARET',
@@ -38,9 +40,11 @@ export const ENGINE_SHORT: Record<Engine, string> = {
   quiz: 'TEST',
   emoji: 'EMOJİ',
   cards: 'KART SEÇ',
+  roulette: 'RUS RULETİ',
+  shots: 'SHOT RULETİ',
 };
 /** Sorular bölümünde yönetilen motorlar (görev ve hikâye hariç). Testler ayrıca kendi bölümünde de yönetilir. */
-export const QUESTION_ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'chat_game', 'quiz', 'emoji', 'cards'];
+export const QUESTION_ENGINES: Engine[] = ['truth_dare', 'would_you_rather', 'know_me', 'secret_questions', 'this_or_that', 'chat_game', 'quiz', 'emoji', 'cards', 'roulette'];
 
 export function optionCount(engine: Engine | undefined | null): number {
   if (engine === 'would_you_rather' || engine === 'this_or_that') return 2;
