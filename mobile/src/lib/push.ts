@@ -28,8 +28,8 @@ export async function registerForPush(userId: string): Promise<string | null> {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? (Constants as any).easConfig?.projectId;
     if (!projectId) return null;
 
-    const Notifications = await getNotifications();
-    if (!Notifications) return null;
+    // Tam paket yalnızca burada (Expo Go Android değilken) yüklenir
+    const Notifications = await import('expo-notifications');
     const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     await supabase.from('profiles').update({ expo_push_token: token }).eq('id', userId);
     return token;

@@ -1,5 +1,7 @@
 import { AppState, Platform } from 'react-native';
 
+import { loadNotificationsLite, type NotificationsLite } from './notificationsLite';
+
 /**
  * Bildirim altyapısı (yerel + uzak).
  *
@@ -17,15 +19,20 @@ import { AppState, Platform } from 'react-native';
  * kullanılmalı (iOS Expo Go'da projectId eklendiği anda push da çalışır).
  */
 
-type NotificationsModule = typeof import('expo-notifications');
+type NotificationsModule = NotificationsLite;
 
 export const ANDROID_CHANNEL_ID = 'default';
 
 let modPromise: Promise<NotificationsModule | null> | null = null;
-/** expo-notifications'ı tembel yükler (web'de ve hata durumunda null) */
+/** expo-notifications'ın yerel bildirim parçalarını tembel yükler (web'de ve hata durumunda null) */
 export function getNotifications(): Promise<NotificationsModule | null> {
   if (Platform.OS === 'web') return Promise.resolve(null);
-  if (!modPromise) modPromise = import('expo-notifications').then((m) => m as NotificationsModule).catch(() => null);
+  if (!modPromise) {
+    // Tam paket değil: ana giriş Android Expo Go'da yüklenirken hata fırlatır (bkz. notificationsLite)
+    modPromise = Promise.resolve()
+      .then(loadNotificationsLite)
+      .catch(() => null);
+  }
   return modPromise;
 }
 
