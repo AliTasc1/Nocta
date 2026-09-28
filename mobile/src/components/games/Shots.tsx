@@ -4,7 +4,7 @@ import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, useWindowD
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Icon } from '@/components/ui';
-import { play, preloadSfx } from '@/lib/sfx';
+import { play, preloadSfx, stop } from '@/lib/sfx';
 import { colors, fonts } from '@/theme';
 import { Burst, CONFETTI } from './Burst';
 import { GameLayout, GameTopBar, haptic, ResultPill, SoundToggle, TypingDots, useCompact, useReducedMotion, type Player } from './shared';
@@ -18,9 +18,24 @@ type Last = (Spin & { at: number }) | null;
 const GOLD = '#F2C27B';
 const RED = '#E3223F';
 const mod = (x: number, m: number) => ((x % m) + m) % m;
-const SPIN_MS = 5200;
-const LAND_MS = 4000;
-const REVEAL_MS = 4350;
+/** Top cebe düştüğü an (çevirmeden itibaren) */
+const LAND_MS = 7600;
+/** Çark, top düştükten sonra da bir süre dönmeye devam eder */
+const SPIN_MS = 8800;
+/** Topun cebe "zıplayarak" oturma süresi (LAND_MS'ten önce başlar) */
+const DROP_MS = 900;
+const REVEAL_MS = LAND_MS + 350;
+/** Gerilim müziği top belirgin biçimde yavaşlamaya başlayınca girer ve düşüşte kesilir */
+const TENSION_AT = LAND_MS - DROP_MS - 4000;
+/** Top yörüngesinin üstel yavaşlama sabiti (generate_sfx.py → SPIN_K ile aynı) */
+const SPIN_K = 2.6;
+const spinCurve = (x: number) => (1 - Math.exp(-SPIN_K * x)) / SPIN_K - x * Math.exp(-SPIN_K);
+const SPIN_NORM = spinCurve(1);
+/**
+ * Topun göreli açısı için üstel yavaşlama: hızlı başlar, son 3–4 sn'de gözle görülür biçimde
+ * yavaşlar ve hızı tam sonda sıfıra iner (sert durma yok). Uç noktalar kesin: 0 → 0, 1 → 1.
+ */
+const spinEase = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : spinCurve(x) / SPIN_NORM);
 
 /**
  * 19 · Shot Ruleti
@@ -34,7 +49,7 @@ export function Shots({ g, onClose }: EngineProps) {
   const phase: string = st.phase ?? 'agreement';
 
   useEffect(() => {
-    preloadSfx(['roulette_spin', 'ball_drop', 'glass_clink', 'saved_chime']);
+    preloadSfx(['roulette_spin', 'ball_drop', 'glass_clink', 'saved_chime', 'tension']);
   }, []);
 
   const top = (
@@ -97,7 +112,10 @@ function Table({ g, top, bg }: { g: EngineProps['g']; top: React.ReactNode; bg: 
   };
   useEffect(() => {
     const list = timers.current;
-    return () => list.forEach(clearTimeout);
+    return () => {
+      list.forEach(clearTimeout);
+      stop('tension');
+    };
   }, []);
 
   /** Ekranda gösterilen sonuç (animasyon bitene kadar bir öncekini gösterir → sürpriz bozulmaz) */
@@ -122,28 +140,36 @@ function Table({ g, top, bg }: { g: EngineProps['g']; top: React.ReactNode; bg: 
     a.wheel.stopAnimation();
     a.rel.stopAnimation();
 
-    const W1 = wheelRef.current + (reduced ? 120 : 360 * 2 + 60 + Math.random() * 200);
+    const W1 = wheelRef.current + (reduced ? 120 : 360 * 3 + 60 + Math.random() * 200);
     wheelRef.current = W1;
-    const base = relRef.current - (reduced ? 360 : 360 * 5);
+    const base = relRef.current - (reduced ? 360 : 360 * 8);
     const Rf = base - mod(base - pocketAngle(res.result), 360);
     relRef.current = Rf;
 
+    const dropAt = (LAND_MS - DROP_MS) * k;
     play('roulette_spin');
     haptic.light();
     Animated.parallel([
       Animated.timing(a.wheel, { toValue: W1, duration: SPIN_MS * k, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(a.rel, { toValue: Rf, duration: LAND_MS * k, easing: Easing.bezier(0.1, 0.55, 0.25, 1), useNativeDriver: true }),
+      Animated.timing(a.rel, { toValue: Rf, duration: LAND_MS * k, easing: spinEase, useNativeDriver: true }),
       Animated.sequence([
         Animated.timing(a.drop, { toValue: 0, duration: 220, useNativeDriver: true }),
-        Animated.delay(Math.max(0, (LAND_MS - 900) * k - 220)),
-        Animated.timing(a.drop, { toValue: 1, duration: 850 * k, easing: Easing.bounce, useNativeDriver: true }),
+        Animated.delay(Math.max(0, dropAt - 220)),
+        Animated.timing(a.drop, { toValue: 1, duration: DROP_MS * k, easing: Easing.bounce, useNativeDriver: true }),
       ]),
     ]).start();
-    later((LAND_MS - 900) * k, () => {
+    // Gerilim: iki telefonda da aynı nonce'tan tetiklenir → senkron başlar, düşüşte kesilir
+    if (!reduced) later(TENSION_AT, () => play('tension', { volume: 0.75 }));
+    later(dropAt, () => {
+      stop('tension');
       play('ball_drop');
       haptic.light();
     });
-    if (!reduced) [LAND_MS - 700, LAND_MS - 480, LAND_MS - 300, LAND_MS - 120].forEach((t) => later(t, haptic.tap));
+    if (!reduced) {
+      // yavaşlarken seyrelen tıkırtı titreşimleri
+      [2400, 3300, 4100, 4800, 5400, 5900, 6300].forEach((t) => later(t, haptic.tap));
+      [LAND_MS - 700, LAND_MS - 480, LAND_MS - 300, LAND_MS - 120].forEach((t) => later(t, haptic.tap));
+    }
 
     later(REVEAL_MS * k, () => {
       setShown(res);

@@ -75,8 +75,12 @@ export function usePartnerAlerts(onInvite?: (sessionId: string) => void) {
         }
       } else if (route === '/chat' && here === '/chat') {
         return;
+      } else if (route?.startsWith('/letters/') && here === route) {
+        return; // o mektup zaten açık
       }
-      alert({ id: `n:${n.id}`, title: n.title, body: n.body ?? '', route, kind: n.kind });
+      // Mektup teslimi hem `notifications` hem `letters` kanalından gelir: aynı kimlikle tek bildirim
+      const letterId = typeof n.data?.letter_id === 'string' ? (n.data.letter_id as string) : null;
+      alert({ id: letterId ? `l:${letterId}` : `n:${n.id}`, title: n.title, body: n.body ?? '', route, kind: n.kind });
     };
 
     const ch = supabase
@@ -99,6 +103,16 @@ export function usePartnerAlerts(onInvite?: (sessionId: string) => void) {
         alert({ id: `m:${m.id}`, title: pa?.display_name || 'Nocta', body, route: '/chat', kind: 'message' });
       });
     }
+
+    // Sevgiliye Mektup: bana bir mektup teslim edildiğinde (anında ya da zamanı gelince)
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'letters', filter: `recipient_id=eq.${userId}` }, (p) => {
+      const l = p.new as { id?: string; delivered_at?: string | null; read_at?: string | null } | null;
+      if (!l?.id || !l.delivered_at || l.read_at) return;
+      const route = `/letters/${l.id}`;
+      if (live.current.pathname === route) return;
+      const name = live.current.partner?.display_name || 'Partnerin';
+      alert({ id: `l:${l.id}`, title: '💌 Bir mektubun var', body: `${name} sana okyanusun öbür ucundan bir mektup gönderdi.`, route, kind: 'letter' });
+    });
 
     ch.subscribe((status) => setRealtimeLive(status === 'SUBSCRIBED'));
     return () => {

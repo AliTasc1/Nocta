@@ -28,6 +28,7 @@ export default function GameDetailScreen() {
   // Sohbet oyunu sohbet ekranında oynanır
   useEffect(() => {
     if (game?.engine === 'chat_game') router.replace('/chat?prompt=1');
+    if (game?.engine === 'letters') router.replace('/letters');
   }, [game?.engine]);
 
   const connected = couple?.status === 'active' && !!partner;
@@ -62,8 +63,8 @@ export default function GameDetailScreen() {
     );
   }
 
-  // Masa oyunları (Rus Ruleti, Shot Ruleti) kategori seçimi kullanmaz: itiraf soruları tüm setlerden gelir
-  const tableGame = game.engine === 'roulette' || game.engine === 'shots';
+  // Masa oyunları (Rus Ruleti, Shot Ruleti) ve Burası Neresi? kategori seçimi kullanmaz: itiraf soruları tüm setlerden gelir
+  const tableGame = game.engine === 'roulette' || game.engine === 'shots' || game.engine === 'where';
   const cats = game.engine === 'story' || tableGame ? [] : content.categoriesFor(game.id);
   const freeMax = Number(content.settings?.free_max_level ?? 1);
   const cap = isPremium ? 3 : Number.isFinite(freeMax) ? freeMax : 1;
@@ -103,7 +104,7 @@ export default function GameDetailScreen() {
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
-  if (game.engine === 'chat_game') return <Loading />;
+  if (game.engine === 'chat_game' || game.engine === 'letters') return <Loading />;
 
   return (
     <Screen
@@ -137,6 +138,8 @@ export default function GameDetailScreen() {
             <MetaChip icon="gps_fixed" text="6 yuva · 1 mermi" />
           ) : game.engine === 'shots' ? (
             <MetaChip icon="local_bar" text="16 shot · 18+" />
+          ) : game.engine === 'where' ? (
+            <MetaChip icon="photo_camera" text="Fotoğraf · 3 ipucu" />
           ) : (
             <MetaChip icon="style" text={`${content.questionCount(game.id, category)} soru`} />
           )}
@@ -167,7 +170,7 @@ export default function GameDetailScreen() {
 
           {tableGame ? <TableRules engine={game.engine} /> : null}
 
-          {game.engine !== 'shots' ? (
+          {game.engine !== 'shots' && game.engine !== 'where' ? (
             <Card style={{ marginTop: 16, gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Icon name="local_fire_department" size={22} color={colors.blush} />
@@ -266,6 +269,12 @@ const RULES: Record<string, { icon: string; text: string }[]> = {
     { icon: 'gps_fixed', text: 'Tambura tek mermi konur; yeri ikinizden de gizlidir.' },
     { icon: 'touch_app', text: 'Sırayla tetiği çekersiniz. Kimde patlarsa bir itirafta bulunur.' },
     { icon: 'volume_up', text: 'Oyunun sesleri var; sessize almak için oyunda hoparlöre dokun.' },
+  ],
+  where: [
+    { icon: 'photo_camera', text: 'Sırayla biriniz bir yer fotoğraflar ve doğru cevabı yazar.' },
+    { icon: 'ac_unit', text: 'Diğeri fotoğrafı buzlu görür ve yeri tahmin etmeye çalışır.' },
+    { icon: 'lightbulb', text: '3 ipucu hakkın var ama ipuçları yıldızlı gelir: harflerin yarısı gizli.' },
+    { icon: 'sentiment_very_satisfied', text: 'Palyaço arada çıkıp şaşırtmaca fısıldar. Önerisini kabul edersen tahminin yanlış sayılır!' },
   ],
   shots: [
     { icon: 'tune', text: 'Sırayla 4 sayılık bir aralık seçip ruleti çevirirsiniz.' },

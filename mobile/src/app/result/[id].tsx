@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { emojiCorrectIndex } from '@/components/games/EmojiGame';
 import { quizCorrectIndex } from '@/components/games/Quiz';
 import { finishCache, GameBackground, haptic, optionsOf, upper, useCompact, useReducedMotion, type FinishResult } from '@/components/games/shared';
+import { WhereHistory, type WhereRound } from '@/components/games/wherePhoto';
 import { Button, EmptyState, Icon, Loading } from '@/components/ui';
 import { errorText, supabase } from '@/lib/supabase';
 import type { Game, GameSession, SessionAnswer } from '@/lib/types';
@@ -171,6 +172,9 @@ export default function ResultScreen() {
   const spins: { drinker: string | null }[] = Array.isArray(st.spins) ? st.spins : [];
   const myShots = spins.filter((x) => x.drinker && x.drinker === userId).length;
   const partnerShots = spins.filter((x) => x.drinker && x.drinker !== userId).length;
+  const whereRounds: WhereRound[] = Array.isArray(st.history) ? st.history : [];
+  const myHits = whereRounds.filter((r) => r.correct && r.guesser === userId).length;
+  const partnerHits = whereRounds.filter((r) => r.correct && r.guesser !== userId).length;
   const copy = isQuizLike
     ? quizHeadline(quiz, matches, rounds, partnerName, game.engine === 'emoji')
     : game.engine === 'roulette'
@@ -183,13 +187,23 @@ export default function ResultScreen() {
           : myShots > partnerShots
             ? { a: 'Bu gecenin', b: 'şanssızı sensin 🥃' }
             : { a: 'Şans', b: 'bu gece seninle!' }
-        : headline(game.engine, matches, rounds);
+        : game.engine === 'where'
+          ? myHits + partnerHits === 0
+            ? { a: 'Bu gece', b: 'palyaço kazandı 🤡' }
+            : myHits === partnerHits
+              ? { a: 'Aynı haritada,', b: 'ikiniz de.' }
+              : myHits > partnerHits
+                ? { a: 'Keşif ustası', b: 'sensin!' }
+                : { a: 'Bu gece', b: `${partnerName} buldu!` }
+          : headline(game.engine, matches, rounds);
   const bigNumber = quizOnlyKnow
     ? { n: quiz!.myCorrect, of: quiz!.knowRounds }
     : game.engine === 'roulette'
       ? { n: confessions.length, of: null }
       : game.engine === 'shots'
         ? { n: myShots + partnerShots, of: null }
+        : game.engine === 'where'
+          ? { n: myHits + partnerHits, of: whereRounds.length }
         : matchGame || game.engine === 'know_me' || isQuizLike || game.engine === 'cards'
           ? { n: matches, of: rounds }
           : { n: rounds, of: null };
@@ -202,7 +216,9 @@ export default function ResultScreen() {
         : 'aynı cevap'
     : game.engine === 'cards'
       ? 'aynı kart'
-      : null;
+      : game.engine === 'where'
+        ? 'doğru tahmin'
+        : null;
   const second = isQuizLike
     ? quizKnow
       ? { k: 'Doğru cevaplar', v: `Sen ${quiz!.myCorrect} · ${partnerName} ${quiz!.partnerCorrect}` }
@@ -213,6 +229,8 @@ export default function ResultScreen() {
     ? { k: 'Çekilen tetik', v: `${rounds} tetik · ${Math.max(1, Number(st.round ?? 0) + (st.phase === 'loading' ? 0 : 1))} tur` }
     : game.engine === 'shots'
     ? { k: 'Kim kaç shot', v: `Sen ${myShots} · ${partnerName} ${partnerShots}` }
+    : game.engine === 'where'
+    ? { k: 'Kim kaç bildi', v: `Sen ${myHits} · ${partnerName} ${partnerHits}` }
     : matchGame
     ? { k: 'En tatlı fark', v: sweetDiff ?? (rounds ? `%${Math.round((matches / rounds) * 100)} uyum` : '—') }
     : game.engine === 'know_me'
@@ -263,6 +281,8 @@ export default function ResultScreen() {
             ))}
           </View>
         ) : null}
+
+        {game.engine === 'where' ? <WhereHistory rounds={whereRounds} userId={userId ?? ''} partnerName={partnerName} /> : null}
 
         {game.engine === 'shots' ? (
           <View style={{ width: '100%', flexDirection: 'row', gap: 10 }}>

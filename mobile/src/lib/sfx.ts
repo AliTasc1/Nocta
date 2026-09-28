@@ -3,7 +3,7 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-aud
 import { useSyncExternalStore } from 'react';
 
 /**
- * Oyun ses efektleri (Rus Ruleti, Shot Ruleti).
+ * Oyun ses efektleri (Rus Ruleti, Shot Ruleti, Burası Neresi?).
  *  - `preloadSfx()` oyun ekranı açılınca çağrılır: ses modu ayarlanır, oynatıcılar önceden oluşturulur.
  *  - `play(name)` asla hata fırlatmaz; sessize alınmışsa hiçbir şey yapmaz.
  *  - Sessiz ayarı cihazda saklanır ('nocta.sfx.muted').
@@ -19,6 +19,16 @@ const SOURCES = {
   ball_drop: require('../../assets/sfx/ball_drop.wav'),
   glass_clink: require('../../assets/sfx/glass_clink.wav'),
   saved_chime: require('../../assets/sfx/saved_chime.wav'),
+  tension: require('../../assets/sfx/tension.wav'),
+  clown_laugh: require('../../assets/sfx/clown_laugh.wav'),
+  clown_pop: require('../../assets/sfx/clown_pop.wav'),
+  photo_frost: require('../../assets/sfx/photo_frost.wav'),
+  // Sevgiliye Mektup
+  paper_fold: require('../../assets/sfx/paper_fold.wav'),
+  cork_pop: require('../../assets/sfx/cork_pop.wav'),
+  glass_bottle: require('../../assets/sfx/glass_bottle.wav'),
+  ocean_waves: require('../../assets/sfx/ocean_waves.wav'),
+  letter_arrive: require('../../assets/sfx/letter_arrive.wav'),
 } as const;
 
 export type SfxName = keyof typeof SOURCES;
@@ -69,15 +79,18 @@ export function preloadSfx(names: SfxName[] = Object.keys(SOURCES) as SfxName[])
 }
 
 /** Efekti baştan çal. Hiçbir koşulda hata fırlatmaz. */
-export function play(name: SfxName, opts: { volume?: number } = {}) {
+export function play(name: SfxName, opts: { volume?: number; loop?: boolean } = {}) {
   if (muted) return;
   try {
     const p = playerOf(name);
     if (!p) return;
     if (opts.volume != null) p.volume = Math.max(0, Math.min(1, opts.volume));
+    if (opts.loop != null) p.loop = opts.loop;
     const r = p.seekTo(0) as unknown;
     if (r && typeof (r as Promise<void>).catch === 'function') (r as Promise<void>).catch(() => {});
-    p.play();
+    // web: otomatik oynatma engellenirse play() reddedilen bir promise döndürür
+    const pr = p.play() as unknown;
+    if (pr && typeof (pr as Promise<void>).catch === 'function') (pr as Promise<void>).catch(() => {});
   } catch {
     // ses çalınamadı: oyun sessiz devam eder
   }

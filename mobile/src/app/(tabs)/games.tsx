@@ -3,7 +3,9 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useDialog } from '@/components/Dialog';
-import { Chip, EmptyState, Icon, Pill, Screen, SerifTitle, T, TintCard } from '@/components/ui';
+import { WaxSeal } from '@/components/letters/Paper';
+import { Badge, Chip, EmptyState, Icon, Pill, Screen, SerifTitle, T, TintCard } from '@/components/ui';
+import { useUnreadLetters } from '@/lib/letters';
 import type { Engine, Game } from '@/lib/types';
 import { useApp } from '@/providers/AppProvider';
 import { useContent } from '@/providers/ContentProvider';
@@ -30,6 +32,7 @@ const FILTERS: Filter[] = [
 export default function Games() {
   const { games, loading, refresh } = useContent();
   const { isPremium, couple, partner } = useApp();
+  const unreadLetters = useUnreadLetters();
   const { dialog, ask } = useDialog();
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -55,7 +58,8 @@ export default function Games() {
       });
       return;
     }
-    router.push(`/game/${g.slug}`);
+    // Sevgiliye Mektup lobi akışı kullanmaz: doğrudan posta kutusu
+    router.push(g.engine === 'letters' ? '/letters' : `/game/${g.slug}`);
   };
 
   const onRefresh = async () => {
@@ -114,6 +118,12 @@ export default function Games() {
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                   <Icon name={g.icon} size={22} color={colors.blush} />
+                  {g.engine === 'letters' && unreadLetters ? (
+                    <View accessibilityLabel={`${unreadLetters} okunmamış mektup`}>
+                      <WaxSeal size={26} />
+                      {unreadLetters > 1 ? <Badge n={unreadLetters} style={{ position: 'absolute', top: -5, right: -7 }} /> : null}
+                    </View>
+                  ) : null}
                   {g.is_premium ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       {locked ? <Icon name="lock" size={14} color={colors.irisSoft} /> : null}

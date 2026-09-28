@@ -16,6 +16,7 @@ import { Story } from '@/components/games/Story';
 import { ThisOrThat } from '@/components/games/ThisOrThat';
 import { TruthOrDare } from '@/components/games/TruthOrDare';
 import { useGameSession } from '@/components/games/useGameSession';
+import { Where } from '@/components/games/Where';
 import { WouldYouRather } from '@/components/games/WouldYouRather';
 import { EmptyState, Loading } from '@/components/ui';
 import { useToast } from '@/providers/ToastProvider';
@@ -143,6 +144,9 @@ export default function PlayScreen() {
         break;
       case 'shots':
         body = <Shots {...props} />;
+        break;
+      case 'where':
+        body = <Where {...props} />;
         break;
       default:
         body = (
