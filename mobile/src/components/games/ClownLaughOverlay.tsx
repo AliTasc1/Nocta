@@ -1,18 +1,21 @@
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { isMuted, play, stop } from '@/lib/sfx';
 import { fonts } from '@/theme';
-import { ClownHead } from './Clown';
 import { haptic, useReducedMotion } from './shared';
+
+/** LottieFiles "Honka Virus" — kıpır kıpır palyaço kafası (1 sn döngü) */
+const CLOWN_LOTTIE = require('../../../assets/lottie/clown.json');
 
 /**
  * Higgsfield ile üretilmiş palyaço kahkaha videosu buraya bağlanır:
  *   export const CLOWN_VIDEO: number | null = require('../../../assets/video/clown.mp4');
- * null iken çizilmiş palyaço animasyonu + 'clown_laugh' sesi kullanılır.
+ * null iken Lottie palyaço animasyonu + 'clown_laugh' sesi kullanılır.
  */
 export const CLOWN_VIDEO: number | null = null;
 
@@ -91,7 +94,6 @@ function DrawnLaugh({ variant, caption, onClose }: { variant: 'full' | 'small'; 
     zoom: new Animated.Value(0),
     shake: new Animated.Value(0),
     bounce: new Animated.Value(0),
-    jaw: new Animated.Value(0.7),
     rays: new Animated.Value(0),
     ha: HA.map(() => new Animated.Value(0)),
   }));
@@ -122,13 +124,6 @@ function DrawnLaugh({ variant, caption, onClose }: { variant: 'full' | 'small'; 
             Animated.sequence([
               Animated.timing(a.bounce, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
               Animated.timing(a.bounce, { toValue: 0, duration: 170, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-            ]),
-          ),
-          // çene: ha-ha-ha
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(a.jaw, { toValue: 1.02, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-              Animated.timing(a.jaw, { toValue: 0.5, duration: 150, easing: Easing.in(Easing.quad), useNativeDriver: true }),
             ]),
           ),
           Animated.loop(Animated.timing(a.rays, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: true })),
@@ -166,7 +161,7 @@ function DrawnLaugh({ variant, caption, onClose }: { variant: 'full' | 'small'; 
         ],
       }}
     >
-      <ClownHead size={head} mood="laugh" jaw={a.jaw} />
+      <LottieView source={CLOWN_LOTTIE} autoPlay={!reduced} loop style={{ width: head * 1.2, height: head * 1.2 }} />
     </Animated.View>
   );
 

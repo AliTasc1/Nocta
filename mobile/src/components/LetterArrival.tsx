@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, usePathname, useSegments } from 'expo-router';
+import LottieView from 'lottie-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,8 +9,11 @@ import { play } from '@/lib/sfx';
 import { supabase } from '@/lib/supabase';
 import { useApp } from '@/providers/AppProvider';
 import { colors, radius } from '@/theme';
-import { Pulse, Rings } from './Rings';
+import { Rings } from './Rings';
 import { Button, Icon, T } from './ui';
+
+/** LottieFiles "Message in a bottle" — dalgada sallanan şişe */
+const BOTTLE_LOTTIE = require('../../assets/lottie/bottle.json');
 
 /**
  * Küresel "mektup geldi" kartı.
@@ -128,24 +132,9 @@ export function LetterArrival() {
             transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }],
           }}
         >
-          <View style={{ width: 120, height: 120, alignItems: 'center', justifyContent: 'center' }}>
-            <Rings size={110} />
-            <Pulse>
-              <View
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 36,
-                  backgroundColor: colors.wine,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: colors.blush,
-                }}
-              >
-                <Icon name="mail" size={34} color={colors.pearl} />
-              </View>
-            </Pulse>
+          <View style={{ width: 150, height: 150, alignItems: 'center', justifyContent: 'center' }}>
+            <Rings size={140} />
+            <LottieView source={BOTTLE_LOTTIE} autoPlay loop style={{ width: 150, height: 150 }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Icon name="water" size={16} color={colors.blush} />
