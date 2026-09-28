@@ -525,7 +525,7 @@ if __name__ == '__main__':
     save('glass_clink', glass_clink())
     save('saved_chime', saved_chime())
     save('tension', tension())
-    save('clown_laugh', clown_laugh())
+    # clown_laugh.wav artık gerçek kayıttan üretiliyor (recorded/clown_laugh_source.wav); üzerine yazılmasın.
     save('clown_pop', clown_pop())
     save('photo_frost', photo_frost())
     # Sevgiliye Mektup
